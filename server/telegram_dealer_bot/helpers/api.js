@@ -16,17 +16,29 @@ const setTimeoutPromise = promisify(setTimeout)
 // Общая функция для выполнения задачи с таймаутом
 async function runWithTimeout(fn, timeoutMs, taskName) {
   let timeout
+  let isCompleted = false
+
   try {
     const taskPromise = fn()
     const timeoutPromise = new Promise((_, reject) => {
       timeout = setTimeout(() => {
-        reject(new Error(`Таймаут выполнения задачи ${taskName} (${timeoutMs}ms)`))
+        if (!isCompleted) {
+          isCompleted = true
+          reject(new Error(`Таймаут выполнения задачи ${taskName} (${timeoutMs}ms)`))
+        }
       }, timeoutMs)
     })
 
-    return await Promise.race([taskPromise, timeoutPromise])
+    const result = await Promise.race([taskPromise, timeoutPromise])
+    isCompleted = true
+    return result
+  } catch (error) {
+    isCompleted = true
+    throw error
   } finally {
-    clearTimeout(timeout)
+    if (timeout) {
+      clearTimeout(timeout)
+    }
   }
 }
 //*************************************************************************************************************************************** */
@@ -454,20 +466,47 @@ async function getReclamationClose(sScan, testMode = false, testData = null) {
     }
   }
 
-  const client = new net.Socket()
-  let responseBuffer = ''
-  let isProcessing = false
-
   return new Promise(async (resolve, reject) => {
-    function handleError(err, context) {
-      client.destroy()
+    const client = new net.Socket()
+    let responseBuffer = ''
+    let isProcessing = false
+    let connectionTimeout
+    let responseTimeout
 
-      reject(`❌ ${context}`)
+    // Таймаут на подключение (10 секунд)
+    connectionTimeout = setTimeout(() => {
+      if (!client.destroyed) {
+        client.destroy()
+        reject(new Error('Таймаут подключения к серверу (10с)'))
+      }
+    }, 10000)
+
+    // Таймаут на ответ (30 секунд)
+    responseTimeout = setTimeout(() => {
+      if (!client.destroyed) {
+        client.destroy()
+        reject(new Error('Таймаут ожидания ответа сервера (30с)'))
+      }
+    }, 30000)
+
+    function cleanup() {
+      clearTimeout(connectionTimeout)
+      clearTimeout(responseTimeout)
+      if (!client.destroyed) {
+        client.destroy()
+      }
     }
+
+    function handleError(err, context) {
+      cleanup()
+      reject(new Error(`❌ ${context}: ${err.message}`))
+    }
+
     try {
       // Подключение к серверу
       client.connect(8240, '192.168.57.77', async () => {
         try {
+          clearTimeout(connectionTimeout) // Подключение успешно
           const message = `Q11\x01EB35000999\x02\t${sScan}\r`
           client.write(iconv.encode(message, 'windows-1251'))
           console.log(`Запрос отправлен для скана: ${sScan}`)
@@ -482,12 +521,13 @@ async function getReclamationClose(sScan, testMode = false, testData = null) {
         isProcessing = true
 
         try {
+          clearTimeout(responseTimeout) // Получен ответ
           const decodedData = iconv.decode(data, 'windows-1251')
           responseBuffer += decodedData
 
           if (responseBuffer.includes('q11\x01')) {
             const result = await processServerResponse(responseBuffer, sScan)
-            client.destroy()
+            cleanup()
             resolve(result)
           }
         } catch (err) {
@@ -503,6 +543,11 @@ async function getReclamationClose(sScan, testMode = false, testData = null) {
 
       client.on('close', () => {
         console.log('Соединение с сервером закрыто')
+        cleanup()
+      })
+
+      client.on('timeout', () => {
+        handleError(new Error('Таймаут соединения'), 'Таймаут соединения')
       })
     } catch (err) {
       handleError(err, 'Ошибка выполнения функции')
@@ -875,10 +920,10 @@ async function processReclamationResult(result, bot) {
 }
 
 // Инициализация cron-задачи  *******************************************************************************************************************************
-function initReclamationCron(bot) {
+function initReclamationCron(bot, cronManager) {
   console.log('[CRON][INIT] Инициализация планировщика проверки рекламаций...')
 
-  cron.schedule('0 10-19/2 * * *', async () => {
+  const task = async () => {
     const timestamp = new Date().toISOString()
     console.log(`[CRON][V6Z][${timestamp}] Старт проверки рекламаций...`)
 
@@ -905,16 +950,41 @@ function initReclamationCron(bot) {
     } catch (error) {
       console.error(`[CRON][V6Z][ERROR] ${error.message}`)
       console.error(error.stack)
+
+      // Логируем ошибку для диагностики
+      console.error(`[CRON][V6Z][${timestamp}] Задача завершилась с ошибкой:`, {
+        error: error.message,
+        stack: error.stack,
+        timestamp: timestamp,
+      })
+
+      throw error // Перебрасываем ошибку для CronManager
     } finally {
       console.log(`[CRON][V6Z][${timestamp}] Завершено`)
     }
-  })
+  }
+
+  if (cronManager) {
+    return cronManager.addJob('reclamation', '0 10-19/2 * * *', task)
+  } else {
+    // Fallback к старому способу если CronManager не доступен
+    const job = cron.schedule('0 10-19/2 * * *', task, {
+      scheduled: true,
+      timezone: 'Europe/Moscow',
+    })
+
+    job.on('error', (error) => {
+      console.error('[CRON][V6Z][CRON_ERROR] Ошибка в cron-задаче:', error)
+    })
+
+    return job
+  }
 }
 
-function initReconciliationCron(bot) {
+function initReconciliationCron(bot, cronManager) {
   console.log('[CRON][INIT] Инициализация планировщика сверки заказов...')
 
-  cron.schedule('35 9 * * *', async () => {
+  const task = async () => {
     const timestamp = new Date().toISOString()
     console.log(`[CRON][V0Z][${timestamp}] Старт сверки заказов...`)
 
@@ -941,10 +1011,35 @@ function initReconciliationCron(bot) {
     } catch (error) {
       console.error(`[CRON][V0Z][ERROR] ${error.message}`)
       console.error(error.stack)
+
+      // Логируем ошибку для диагностики
+      console.error(`[CRON][V0Z][${timestamp}] Задача завершилась с ошибкой:`, {
+        error: error.message,
+        stack: error.stack,
+        timestamp: timestamp,
+      })
+
+      throw error // Перебрасываем ошибку для CronManager
     } finally {
       console.log(`[CRON][V0Z][${timestamp}] Завершено`)
     }
-  })
+  }
+
+  if (cronManager) {
+    return cronManager.addJob('reconciliation', '35 9 * * *', task)
+  } else {
+    // Fallback к старому способу если CronManager не доступен
+    const job = cron.schedule('35 9 * * *', task, {
+      scheduled: true,
+      timezone: 'Europe/Moscow',
+    })
+
+    job.on('error', (error) => {
+      console.error('[CRON][V0Z][CRON_ERROR] Ошибка в cron-задаче:', error)
+    })
+
+    return job
+  }
 }
 
 // Альтернативное расписание для тестирования (каждую минуту)
@@ -1200,22 +1295,42 @@ function getReconciliationOrders(sScan, testMode = false) {
     const client = new net.Socket()
     let buffer = Buffer.alloc(0)
     let responseComplete = false
-    const timeoutDuration = 10000
+    let connectionTimeout
+    let responseTimeout
 
-    const responseTimer = setTimeout(() => {
-      if (!responseComplete) {
+    // Таймаут на подключение (10 секунд)
+    connectionTimeout = setTimeout(() => {
+      if (!client.destroyed) {
+        client.destroy()
+        reject(new Error('Таймаут подключения к серверу (10с)'))
+      }
+    }, 10000)
+
+    // Таймаут на ответ (30 секунд)
+    responseTimeout = setTimeout(() => {
+      if (!responseComplete && !client.destroyed) {
         console.log('Таймаут соединения, обработка накопленных данных')
+        client.destroy()
         processResponse()
       }
-    }, timeoutDuration)
+    }, 30000)
+
+    function cleanup() {
+      clearTimeout(connectionTimeout)
+      clearTimeout(responseTimeout)
+      if (!client.destroyed) {
+        client.destroy()
+      }
+    }
 
     client.once('error', (err) => {
-      clearTimeout(responseTimer)
+      cleanup()
       console.error(`Ошибка соединения: ${err.message}`)
       reject(err)
     })
 
     client.connect(8240, '192.168.57.77', () => {
+      clearTimeout(connectionTimeout) // Подключение успешно
       console.log('Соединение установлено с сервером.')
       const message = `Q11\x01EB35000999\x02\t${sScan}\r`
       client.write(iconv.encode(message, 'windows-1251'))
@@ -1238,32 +1353,36 @@ function getReconciliationOrders(sScan, testMode = false) {
         console.log('Обнаружен путь к CSV файлу:', csvPathMatch[0])
         try {
           const dealers = await processCsvFile(csvPathMatch[0])
-          clearTimeout(responseTimer)
+          cleanup()
           resolve(dealers)
-          client.destroy()
         } catch (err) {
           // Изменено: при ошибке файла возвращаем пустой массив вместо reject
           console.warn('Ошибка обработки CSV файла:', err.message)
-          clearTimeout(responseTimer)
+          cleanup()
           resolve([])
-          client.destroy()
         }
         return
       }
 
       if (dataStr.includes('q11\x01') || dataStr.endsWith('\r\n')) {
         responseComplete = true
+        clearTimeout(responseTimeout)
         processResponse()
       }
     })
 
     client.on('close', () => {
-      clearTimeout(responseTimer)
       console.log('Соединение закрыто')
       if (!responseComplete) {
         console.log('Соединение закрыто до получения признака конца ответа')
         processResponse()
       }
+    })
+
+    client.on('timeout', () => {
+      console.log('Таймаут соединения')
+      cleanup()
+      processResponse()
     })
 
     async function processCsvFile(networkPath) {
@@ -1325,7 +1444,7 @@ function getReconciliationOrders(sScan, testMode = false) {
     }
 
     function processResponse() {
-      clearTimeout(responseTimer)
+      clearTimeout(responseTimeout)
 
       try {
         if (buffer.length === 0) {

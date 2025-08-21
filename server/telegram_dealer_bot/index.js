@@ -8,6 +8,7 @@ const multer = require('multer')
 const axios = require('axios') // Импорт axios
 const FormData = require('form-data') // Импорт FormData
 const { initReclamationCron, initReconciliationCron } = require('./helpers/api')
+const CronManager = require('./helpers/cronManager') // Импорт нового менеджера
 const { sanitizeFilename } = require('./helpers/fileUtils') // Импорт утилиты для работы с файлами
 
 const app = express()
@@ -39,11 +40,100 @@ const upload = multer({
   },
 })
 
-// Инициализация cron-задач
+// Инициализация CronManager
+const cronManager = new CronManager()
+
+// Инициализация cron-задач с новым менеджером
 const cronJobs = {
-  reclamation: initReclamationCron(bot),
-  reconciliation: initReconciliationCron(bot),
+  reclamation: initReclamationCron(bot, cronManager),
+  reconciliation: initReconciliationCron(bot, cronManager),
 }
+
+// Запуск мониторинга здоровья cron-задач
+cronManager.startHealthCheck()
+
+// Добавляем endpoint для мониторинга cron-задач
+app.get('/api/cron/status', (req, res) => {
+  try {
+    const status = cronManager.getAllJobsStatus()
+    const stats = cronManager.getStats()
+    res.json({
+      success: true,
+      data: {
+        status,
+        stats,
+        timestamp: new Date().toISOString(),
+      },
+    })
+  } catch (error) {
+    console.error('[API][CRON_STATUS] Ошибка получения статуса:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Ошибка получения статуса cron-задач',
+    })
+  }
+})
+
+// Endpoint для перезапуска cron-задач
+app.post('/api/cron/restart/:jobName', (req, res) => {
+  try {
+    const { jobName } = req.params
+    const result = cronManager.restartJob(jobName)
+
+    if (result) {
+      res.json({
+        success: true,
+        message: `Задача ${jobName} перезапущена`,
+      })
+    } else {
+      res.status(404).json({
+        success: false,
+        error: `Задача ${jobName} не найдена`,
+      })
+    }
+  } catch (error) {
+    console.error('[API][CRON_RESTART] Ошибка перезапуска:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Ошибка перезапуска cron-задачи',
+    })
+  }
+})
+
+// Endpoint для остановки/запуска всех cron-задач
+app.post('/api/cron/:action', (req, res) => {
+  try {
+    const { action } = req.params
+
+    switch (action) {
+      case 'stop':
+        cronManager.stopAllJobs()
+        res.json({
+          success: true,
+          message: 'Все cron-задачи остановлены',
+        })
+        break
+      case 'start':
+        cronManager.startAllJobs()
+        res.json({
+          success: true,
+          message: 'Все cron-задачи запущены',
+        })
+        break
+      default:
+        res.status(400).json({
+          success: false,
+          error: 'Неизвестное действие. Используйте "stop" или "start"',
+        })
+    }
+  } catch (error) {
+    console.error('[API][CRON_ACTION] Ошибка выполнения действия:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Ошибка выполнения действия с cron-задачами',
+    })
+  }
+})
 
 // Регистрация маршрутов
 app.use('/api/auth', authRoutes(bot))
@@ -185,23 +275,50 @@ app.post(
 
 process.on('SIGTERM', () => {
   console.log('Получен SIGTERM. Остановка задач...')
+  gracefulShutdown()
+})
 
-  // Остановка cron-задач с проверкой
-  if (cronJobs.reclamation) {
+process.on('SIGINT', () => {
+  console.log('Получен SIGINT. Остановка задач...')
+  gracefulShutdown()
+})
+
+// Функция для корректного завершения работы
+function gracefulShutdown() {
+  console.log('Начинаем корректное завершение работы...')
+
+  // Остановка CronManager
+  cronManager.stopAllJobs()
+  cronManager.stopHealthCheck()
+  console.log('CronManager остановлен')
+
+  // Остановка cron-задач с проверкой (fallback)
+  if (cronJobs.reclamation && typeof cronJobs.reclamation.stop === 'function') {
     cronJobs.reclamation.stop()
     console.log('Cron-задача reclamation остановлена')
   }
-  if (cronJobs.reconciliation) {
+  if (cronJobs.reconciliation && typeof cronJobs.reconciliation.stop === 'function') {
     cronJobs.reconciliation.stop()
     console.log('Cron-задача reconciliation остановлена')
   }
 
-  server.close(() => {
-    bot.stopPolling() // Остановка бота
-    console.log('Сервер и бот остановлены')
+  // Закрытие пула соединений
+  dbPool.end((err) => {
+    if (err) {
+      console.error('Ошибка закрытия пула соединений:', err)
+    } else {
+      console.log('Пул соединений закрыт')
+    }
+
+    // Остановка бота
+    bot.stopPolling()
+    console.log('Бот остановлен')
+
+    // Завершение процесса
+    console.log('Сервер корректно завершен')
     process.exit(0)
   })
-})
+}
 
 // Запуск сервера
 app.listen(port, () => {
