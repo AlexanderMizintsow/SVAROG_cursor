@@ -611,6 +611,40 @@ CREATE TABLE sent_messages_notifications (
     sent_at TIMESTAMP DEFAULT NOW() -- Дата и время отправки
 );
 
+-- Уникальный индекс для предотвращения дублирования сообщений
+CREATE UNIQUE INDEX idx_sent_messages_unique 
+ON sent_messages_notifications (reminders_id, sent_text, sent_files, DATE_TRUNC('minute', sent_at));
+
+-- Для хранения истории завершенных уведомлений
+CREATE TABLE completed_notifications_history (
+    id SERIAL PRIMARY KEY,
+    original_reminder_id INT NOT NULL, -- ID оригинального уведомления
+    dealer_name VARCHAR(255) NOT NULL, -- Наименование дилера
+    request_description TEXT, -- Суть запроса
+    priority VARCHAR(50) DEFAULT 'normal', -- Приоритет уведомления
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Дата создания уведомления
+    completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Дата завершения (удаления)
+    completed_by_user_id INT REFERENCES users(id) ON DELETE SET NULL, -- Пользователь, завершивший уведомление
+    original_reminder_data JSONB -- Сохранение всех данных оригинального уведомления
+);
+
+-- Индексы для быстрого поиска
+CREATE INDEX idx_completed_notifications_user_id ON completed_notifications_history(completed_by_user_id);
+CREATE INDEX idx_completed_notifications_dealer_name ON completed_notifications_history(dealer_name);
+CREATE INDEX idx_completed_notifications_completed_at ON completed_notifications_history(completed_at);
+
+-- Для хранения истории отправленных сообщений и файлов к завершенным уведомлениям
+CREATE TABLE completed_notifications_messages (
+    id SERIAL PRIMARY KEY,
+    completed_notification_id INT NOT NULL REFERENCES completed_notifications_history(id) ON DELETE CASCADE,
+    sent_text TEXT, -- Текст, который был отправлен
+    sent_files TEXT[], -- Имена файлов, которые были отправлены
+    sent_at TIMESTAMP DEFAULT NOW() -- Дата и время отправки
+);
+
+-- Индекс для быстрого поиска по завершенному уведомлению
+CREATE INDEX idx_completed_messages_notification_id ON completed_notifications_messages(completed_notification_id);
+
 /*
 CREATE TABLE notifications_telegramm_dealer (    
      priority_notifications VARCHAR(50) DEFAULT 'normal' -- Приоритет уведомления (например, "low", "normal", "high")

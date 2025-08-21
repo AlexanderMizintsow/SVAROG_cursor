@@ -23,7 +23,8 @@ import { AiOutlineFundProjectionScreen } from 'react-icons/ai'
 import { FcTreeStructure, FcParallelTasks } from 'react-icons/fc'
 import { IoAddOutline } from 'react-icons/io5'
 import { MdOutlineEditNotifications } from 'react-icons/md'
-import { FaTasks } from 'react-icons/fa'
+import { FaTasks, FaHistory } from 'react-icons/fa'
+import CompletedNotificationsHistory from './subcomponents/CompletedNotificationsHistory/CompletedNotificationsHistory'
 const ContextMenuBoard = React.lazy(() => import('../Boards/ContextMenuBoard/ContextMenuBoard'))
 const ConfirmationDialog = React.lazy(() =>
   import('../../../components/confirmationDialog/ConfirmationDialog')
@@ -53,6 +54,7 @@ const Boards = () => {
   const [modalOpen, setModalOpen] = useState(false)
   const [isTaskListManagerOpen, setTaskListManagerOpen] = useState(false)
   const [isGlobalProjectOpen, setGlobalProjectOpen] = useState(false)
+  const [isCompletedHistoryOpen, setCompletedHistoryOpen] = useState(false)
 
   const userId = user ? user.id : null
 
@@ -212,6 +214,10 @@ const Boards = () => {
     setGlobalProjectOpen((prev) => !prev)
   }
 
+  const toggleCompletedHistory = () => {
+    setCompletedHistoryOpen((prev) => !prev)
+  }
+
   return (
     <div className="board-content">
       <Suspense fallback={null}>
@@ -241,6 +247,11 @@ const Boards = () => {
             onClick={toggleGlobalProgect}
           />
         }
+        <FaHistory
+          title="История завершенных уведомлений"
+          className="toggle-sidebar-button"
+          onClick={toggleCompletedHistory}
+        />
       </div>
       <DragDropContext
         onDragEnd={(result) =>
@@ -399,6 +410,11 @@ const Boards = () => {
           <GlobalTasksContainer onClose={toggleGlobalProgect} />
         </Box>
       </Modal>
+      <CompletedNotificationsHistory
+        isOpen={isCompletedHistoryOpen}
+        onClose={toggleCompletedHistory}
+        userId={userId}
+      />
     </div>
   )
 }

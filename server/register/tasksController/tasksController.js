@@ -744,6 +744,31 @@ function postMessagesNotificationDealer(dbPool) {
     const { reminders_id, sent_text, sent_files } = req.body
 
     try {
+      // Проверяем, нет ли уже такого же сообщения для этого напоминания
+      const checkDuplicate = await dbPool.query(
+        `
+        SELECT id FROM sent_messages_notifications 
+        WHERE reminders_id = $1 
+        AND sent_text = $2 
+        AND sent_files = $3
+        AND sent_at > NOW() - INTERVAL '1 minute'
+        LIMIT 1
+        `,
+        [reminders_id, sent_text, sent_files]
+      )
+
+      if (checkDuplicate.rows.length > 0) {
+        console.log('Обнаружено дублирующееся сообщение, пропускаем сохранение:', {
+          reminders_id,
+          sent_text,
+          sent_files,
+        })
+        return res.status(200).json({
+          message: 'Сообщение уже существует',
+          existing_id: checkDuplicate.rows[0].id,
+        })
+      }
+
       const result = await dbPool.query(
         `
         INSERT INTO sent_messages_notifications (reminders_id, sent_text, sent_files)

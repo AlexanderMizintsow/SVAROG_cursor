@@ -772,6 +772,122 @@ app.patch('/api/reminders/complete', async (req, res) => {
   }
 })
 
+// API для работы с историей завершенных уведомлений
+app.post('/api/completed-notifications', async (req, res) => {
+  const {
+    original_reminder_id,
+    dealer_name,
+    request_description,
+    priority,
+    created_at,
+    completed_at,
+    completed_by_user_id,
+    original_reminder_data,
+  } = req.body
+
+  try {
+    const result = await dbPool.query(
+      `
+      INSERT INTO completed_notifications_history 
+      (original_reminder_id, dealer_name, request_description, priority, created_at, completed_at, completed_by_user_id, original_reminder_data)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *`,
+      [
+        original_reminder_id,
+        dealer_name,
+        request_description,
+        priority,
+        created_at,
+        completed_at,
+        completed_by_user_id,
+        original_reminder_data,
+      ]
+    )
+
+    res.status(201).json(result.rows[0])
+  } catch (error) {
+    console.error('Ошибка при сохранении в историю:', error)
+    res.status(500).json({ error: 'Ошибка при сохранении в историю' })
+  }
+})
+
+app.post('/api/completed-notifications-messages', async (req, res) => {
+  const { completed_notification_id, sent_text, sent_files, sent_at } = req.body
+
+  try {
+    const result = await dbPool.query(
+      `
+      INSERT INTO completed_notifications_messages 
+      (completed_notification_id, sent_text, sent_files, sent_at)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *`,
+      [completed_notification_id, sent_text, sent_files, sent_at]
+    )
+
+    res.status(201).json(result.rows[0])
+  } catch (error) {
+    console.error('Ошибка при сохранении сообщения в историю:', error)
+    res.status(500).json({ error: 'Ошибка при сохранении сообщения в историю' })
+  }
+})
+
+app.get('/api/completed-notifications', async (req, res) => {
+  const { userId } = req.query
+
+  try {
+    let query = `
+      SELECT 
+        cnh.*,
+        json_agg(
+          json_build_object(
+            'id', cnm.id,
+            'sent_text', cnm.sent_text,
+            'sent_files', cnm.sent_files,
+            'sent_at', cnm.sent_at
+          )
+        ) as messages
+      FROM completed_notifications_history cnh
+      LEFT JOIN completed_notifications_messages cnm ON cnh.id = cnm.completed_notification_id
+    `
+
+    if (userId) {
+      query += ` WHERE cnh.completed_by_user_id = $1`
+    }
+
+    query += ` GROUP BY cnh.id ORDER BY cnh.completed_at DESC`
+
+    const result = await dbPool.query(query, userId ? [userId] : [])
+
+    // Обрабатываем результат, чтобы убрать null для уведомлений без сообщений
+    const processedResult = result.rows.map((row) => ({
+      ...row,
+      messages: row.messages[0] === null ? [] : row.messages,
+    }))
+
+    res.status(200).json(processedResult)
+  } catch (error) {
+    console.error('Ошибка при получении истории:', error)
+    res.status(500).json({ error: 'Ошибка при получении истории' })
+  }
+})
+
+app.get('/api/dealers', async (req, res) => {
+  try {
+    // Получаем список дилеров из таблицы dealers или другой подходящей таблицы
+    // Здесь нужно адаптировать под вашу структуру БД
+    const result = await dbPool.query(`
+      SELECT DISTINCT dealer_name as name, dealer_name as id
+      FROM completed_notifications_history
+      ORDER BY dealer_name
+    `)
+
+    res.status(200).json(result.rows)
+  } catch (error) {
+    console.error('Ошибка при получении списка дилеров:', error)
+    res.status(500).json({ error: 'Ошибка при получении списка дилеров' })
+  }
+})
+
 // Обновление настройки УВЕДОМЛЕНИЯ о ПРОСРОЧЕННЫХ УВЕДОМЛЕНИЯХ
 app.post('/api/settings-overdue-notification-update/:userId', async (req, res) => {
   const { userId } = req.params

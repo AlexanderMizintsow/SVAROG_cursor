@@ -507,10 +507,28 @@ app.post('/api/upload', uploadFile.array('files'), (req, res) => {
 
 app.get('/api/task/download/:filename', (req, res) => {
   const filename = req.params.filename
-  const filePath = path.join(uploadsDir, filename)
+
+  // Ищем файл в различных возможных местах
+  const possiblePaths = [
+    path.join(uploadsDir, filename), // Основная папка uploads
+    path.join(__dirname, '..', '..', 'uploads', filename), // Корневая папка uploads
+    path.join(__dirname, '..', '..', '..', 'uploads', filename), // Папка uploads на уровень выше
+    path.join(__dirname, '..', '..', '..', '..', 'uploads', filename), // Папка uploads на два уровня выше
+    path.join(__dirname, 'uploads', filename), // Локальная папка uploads
+  ]
+
+  let filePath = null
+  for (const possiblePath of possiblePaths) {
+    if (fs.existsSync(possiblePath)) {
+      filePath = possiblePath
+      console.log(`Файл "${filename}" найден по пути: ${filePath}`)
+      break
+    }
+  }
 
   // Проверка существования файла
-  if (!fs.existsSync(filePath)) {
+  if (!filePath) {
+    console.warn(`Файл "${filename}" не найден ни в одном из возможных мест`)
     return res.status(404).json({ error: 'Файл не найден.' })
   }
 
@@ -522,11 +540,104 @@ app.get('/api/task/download/:filename', (req, res) => {
   })
 })
 
+// Новый эндпоинт для получения информации о файле
+app.get('/api/task/file-info/:filename', (req, res) => {
+  const filename = req.params.filename
+
+  // Ищем файл в различных возможных местах
+  const possiblePaths = [
+    path.join(uploadsDir, filename), // Основная папка uploads
+    path.join(__dirname, '..', '..', 'uploads', filename), // Корневая папка uploads
+    path.join(__dirname, '..', '..', '..', 'uploads', filename), // Папка uploads на уровень выше
+    path.join(__dirname, '..', '..', '..', '..', 'uploads', filename), // Папка uploads на два уровня выше
+    path.join(__dirname, 'uploads', filename), // Локальная папка uploads
+  ]
+
+  let filePath = null
+  for (const possiblePath of possiblePaths) {
+    if (fs.existsSync(possiblePath)) {
+      filePath = possiblePath
+      console.log(`Файл "${filename}" найден для получения информации по пути: ${filePath}`)
+      break
+    }
+  }
+
+  // Проверка существования файла
+  if (!filePath) {
+    console.warn(
+      `Файл "${filename}" не найден для получения информации ни в одном из возможных мест`
+    )
+    return res.status(404).json({ error: 'Файл не найден.' })
+  }
+
+  try {
+    const stats = fs.statSync(filePath)
+    const fileInfo = {
+      filename: filename,
+      size: stats.size,
+      lastModified: stats.mtime.toISOString(),
+      created: stats.birthtime.toISOString(),
+      mimetype: getMimeType(filename),
+      path: filePath, // Добавляем путь для отладки
+    }
+
+    res.json(fileInfo)
+  } catch (error) {
+    console.error('Ошибка при получении информации о файле:', error)
+    res.status(500).json({ error: 'Произошла ошибка при получении информации о файле.' })
+  }
+})
+
+// Функция для определения MIME типа файла
+function getMimeType(filename) {
+  const ext = path.extname(filename).toLowerCase()
+  const mimeTypes = {
+    '.pdf': 'application/pdf',
+    '.doc': 'application/msword',
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.xls': 'application/vnd.ms-excel',
+    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    '.txt': 'text/plain',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.gif': 'image/gif',
+    '.bmp': 'image/bmp',
+    '.tiff': 'image/tiff',
+    '.zip': 'application/zip',
+    '.rar': 'application/x-rar-compressed',
+    '.7z': 'application/x-7z-compressed',
+    '.odt': 'application/vnd.oasis.opendocument.text',
+    '.ods': 'application/vnd.oasis.opendocument.spreadsheet',
+    '.odp': 'application/vnd.oasis.opendocument.presentation',
+  }
+
+  return mimeTypes[ext] || 'application/octet-stream'
+}
+
 app.get('/api/task/uploads/:filename', (req, res) => {
   const filename = req.params.filename
-  const filePath = path.join(uploadsDir, filename)
 
-  if (!fs.existsSync(filePath)) {
+  // Ищем файл в различных возможных местах
+  const possiblePaths = [
+    path.join(uploadsDir, filename), // Основная папка uploads
+    path.join(__dirname, '..', '..', 'uploads', filename), // Корневая папка uploads
+    path.join(__dirname, '..', '..', '..', 'uploads', filename), // Папка uploads на уровень выше
+    path.join(__dirname, '..', '..', '..', '..', 'uploads', filename), // Папка uploads на два уровня выше
+    path.join(__dirname, 'uploads', filename), // Локальная папка uploads
+  ]
+
+  let filePath = null
+  for (const possiblePath of possiblePaths) {
+    if (fs.existsSync(possiblePath)) {
+      filePath = possiblePath
+      console.log(`Файл "${filename}" найден для просмотра по пути: ${filePath}`)
+      break
+    }
+  }
+
+  if (!filePath) {
+    console.warn(`Файл "${filename}" не найден для просмотра ни в одном из возможных мест`)
     return res.status(404).json({ error: 'Файл не найден.' })
   }
 

@@ -222,6 +222,50 @@ app.post(
 
         console.log(`Финальное имя для отправки: ${finalFilename}`)
 
+        // СОХРАНЯЕМ ФАЙЛ В ПАПКУ UPLOADS
+        try {
+          const fs = require('fs')
+          const path = require('path')
+
+          // Создаем папку uploads, если её нет
+          const uploadsDir = path.join(__dirname, '..', '..', 'uploads')
+          if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true })
+            console.log(`Создана папка uploads: ${uploadsDir}`)
+          }
+
+          // Сохраняем файл с уникальным именем
+          const timestamp = Date.now()
+          const savedFilename = `${timestamp}-${finalFilename}`
+          const filePath = path.join(uploadsDir, savedFilename)
+
+          fs.writeFileSync(filePath, file.buffer)
+          console.log(`Файл сохранен локально: ${filePath}`)
+
+          // Сохраняем информацию о файле в базу данных для истории
+          try {
+            const db = require('./database/db')
+            const query = `
+              INSERT INTO sent_messages_notifications (reminders_id, sent_text, sent_files, sent_at)
+              VALUES ($1, $2, $3, $4)
+              RETURNING id
+            `
+            const values = [
+              req.body.reminders_id || null, // ID напоминания, если есть
+              text || '', // Текст сообщения
+              [savedFilename], // Массив с именем сохраненного файла
+              new Date().toISOString(), // Время отправки
+            ]
+
+            const result = await db.query(query, values)
+            console.log(`Информация о файле сохранена в БД, ID: ${result.rows[0]?.id}`)
+          } catch (dbError) {
+            console.warn('Не удалось сохранить информацию о файле в БД:', dbError.message)
+          }
+        } catch (saveError) {
+          console.warn('Не удалось сохранить файл локально:', saveError.message)
+        }
+
         form.append('document', file.buffer, {
           filename: finalFilename,
           contentType: file.mimetype,

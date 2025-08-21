@@ -100,6 +100,9 @@ const TaskNotification = forwardRef(
     const sendFilesToTelegram = async (formData) => {
       setIsUploading(true)
       try {
+        // Добавляем reminders_id в formData для Telegram бота
+        formData.append('reminders_id', task.id)
+
         await axios.post(`${API_BASE_URL}5778/api/sendFiles`, formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
