@@ -99,7 +99,7 @@ const AlertBanner = () => {
         notifications.push({
           key: `assigneeMessage-${taskId}`,
           text: `Новое сообщение в задачах от Автора для задачи `,
-          icon: <FaEnvelope />,
+          icon: <FaEnvelope style={{ fontSize: '16px' }} />,
           taskId: taskId,
         })
       }
@@ -125,7 +125,7 @@ const AlertBanner = () => {
         notifications.push({
           key: `authorMessage-${taskId}`,
           text: `Новое сообщение в задачах от Исполнителя задачи`,
-          icon: <FaEnvelope style={{ cursor: 'pointer' }} />,
+          icon: <FaEnvelope style={{ cursor: 'pointer', fontSize: '16px' }} />,
           taskId: taskId,
         })
       }
@@ -142,7 +142,7 @@ const AlertBanner = () => {
     notifications.push({
       key: 'approval',
       text: 'Есть задачи, требующие вашего согласования',
-      icon: <AiOutlineFileDone />,
+      icon: <AiOutlineFileDone style={{ fontSize: '16px' }} />,
     })
   }
 
@@ -171,7 +171,7 @@ const AlertBanner = () => {
                 >
                   <span>
                     <FcInspection
-                      style={{ cursor: 'pointer', marginRight: '5px' }}
+                      style={{ cursor: 'pointer', marginRight: '5px', fontSize: '16px' }}
                       onClick={(e) => {
                         e.stopPropagation()
                         handleTaskAccept(taskId, currentUserId, true)
@@ -187,7 +187,7 @@ const AlertBanner = () => {
                 >
                   <span>
                     <FcRedo
-                      style={{ cursor: 'pointer' }}
+                      style={{ cursor: 'pointer', fontSize: '16px' }}
                       onClick={(e) => {
                         e.stopPropagation()
                         handleOpenConfirmationDialog(taskId)
@@ -199,7 +199,7 @@ const AlertBanner = () => {
             )}
           </div>
         ),
-        icon: <MdDoneOutline style={{ color: '#00FF00' }} />,
+        icon: <MdDoneOutline style={{ color: '#00FF00', fontSize: '16px' }} />,
         taskId: taskId,
       })
     })
@@ -213,7 +213,7 @@ const AlertBanner = () => {
     notifications.push({
       key: `global-${taskId}`,
       text: `Сообщение по проекту: ${title}`,
-      icon: <FaEnvelope />,
+      icon: <FaEnvelope style={{ fontSize: '16px' }} />,
       taskId,
       title,
     })
@@ -224,7 +224,7 @@ const AlertBanner = () => {
     notifications.push({
       key,
       text: `Изменение описания задачи: ${title}`,
-      icon: <MdHistoryEdu style={{ fontSize: '21px', color: 'orange' }} />,
+      icon: <MdHistoryEdu style={{ fontSize: '16px', color: 'orange' }} />,
       taskId,
     })
   })
@@ -393,47 +393,57 @@ const AlertBanner = () => {
         (notifications.length > 0 ||
           extensionNotifications.length > 0 ||
           taskNotifications.length > 0) ? (
-          [...allNotifications].map(({ key, text, icon, taskId, title }) => (
-            <div
-              className="alert-banner-content"
-              key={key}
-              style={{
-                cursor: key.startsWith('global-') ? 'pointer' : undefined,
-              }}
-              onClick={() => {
-                if (key.startsWith('global-')) {
-                  handleGlobalNotificationClick({ taskId, title })
-                } else if (key.startsWith('authorMessage-')) {
-                  handleAuthorNotificationClick(taskId) // Открыть ChatTaskModal для сообщений от авторов
-                  setMessageType('authorMessage-')
-                } else if (key.startsWith('assigneeMessage-')) {
-                  handleAuthorNotificationClick(taskId) // Открыть ChatTaskModal для сообщений от исполнителя
-                  setMessageType('assigneeMessage-')
-                } else if (key.startsWith('task-notification-')) {
-                  handleTaskNotificationClick(taskId)
-                } else if (key.startsWith('task-decision-')) {
-                  // Обработка клика по уведомлению о решении по задаче
-                }
-              }}
-            >
-              <span
-                className={`alert-banner-icon ${key.startsWith('global-') ? 'global' : ''} ${
-                  key.startsWith('assigneeMessage-') || key.startsWith('authorMessage-')
-                    ? 'icon-yellow'
-                    : ''
-                }`}
+          <div className="notifications-container">
+            {[...allNotifications].map(({ key, text, icon, taskId, title }) => (
+              <div
+                className="alert-banner-content"
+                key={key}
+                style={{
+                  cursor: key.startsWith('global-') ? 'pointer' : undefined,
+                }}
+                onClick={() => {
+                  if (key.startsWith('global-')) {
+                    handleGlobalNotificationClick({ taskId, title })
+                  } else if (key.startsWith('authorMessage-')) {
+                    handleAuthorNotificationClick(taskId)
+                    setMessageType('authorMessage-')
+                  } else if (key.startsWith('assigneeMessage-')) {
+                    handleAuthorNotificationClick(taskId)
+                    setMessageType('assigneeMessage-')
+                  } else if (key.startsWith('task-notification-')) {
+                    handleTaskNotificationClick(taskId)
+                  } else if (key.startsWith('task-decision-')) {
+                    // Обработка клика по уведомлению о решении по задаче
+                  }
+                }}
               >
-                {icon}
-              </span>
-              <span>{text}</span>
-              {key.startsWith('description-change-') && (
-                <GiConfirmed
-                  className="alert-banner-button"
-                  onClick={() => handleRemoveNotification(key)}
-                />
-              )}
-            </div>
-          ))
+                <div className="notification-content">
+                  <span
+                    className={`alert-banner-icon ${key.startsWith('global-') ? 'global' : ''} ${
+                      key.startsWith('assigneeMessage-') || key.startsWith('authorMessage-')
+                        ? 'icon-yellow'
+                        : ''
+                    }`}
+                  >
+                    {icon}
+                  </span>
+                  <div className="notification-text-wrapper">
+                    {typeof text === 'string' ? (
+                      <span className="notification-text">{text}</span>
+                    ) : (
+                      <div className="notification-text">{text}</div>
+                    )}
+                  </div>
+                </div>
+                {key.startsWith('description-change-') && (
+                  <GiConfirmed
+                    className="alert-banner-button"
+                    onClick={() => handleRemoveNotification(key)}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
         ) : (
           <span> </span>
         )}
