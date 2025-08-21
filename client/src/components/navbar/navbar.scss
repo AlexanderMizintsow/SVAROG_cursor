@@ -1,0 +1,130 @@
+@import '../../responsive.scss';
+.navbar {
+  min-width: 250px;
+
+  padding: 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  background-color: #f0f0f0;
+  // background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+  // url('/background/autumn.jpg');
+  background-blend-mode: overlay;
+  background-repeat: no-repeat;
+  background-size: cover;
+  overflow-y: auto;
+
+  .menu {
+    margin-bottom: 40px;
+  }
+  h5 {
+    margin-bottom: 20px;
+    color: blue;
+  }
+
+  .menu-item {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+    margin-bottom: 15px;
+
+    .icon {
+      margin-right: 10px;
+      color: #33333344;
+      transition: all 0.7s ease;
+    }
+
+    &:hover .icon {
+      color: #333333;
+    }
+
+    .arrow {
+      margin-left: auto; // Располагает стрелку справа
+    }
+  }
+
+  .notification-container {
+    display: flex;
+    align-items: center;
+  }
+  .notification-reminder {
+    margin-left: 5px;
+    color: red;
+    animation: pulse 1.8s infinite;
+    transition: all 0.3s ease;
+  }
+  .notification-reminder-count {
+    font-size: 14px;
+    margin-left: 5px;
+    color: red;
+  }
+  .submenu {
+    display: flex;
+    flex-direction: column;
+    margin-top: 10px;
+    padding-left: 20px; // Отступ для линии
+    position: relative;
+    margin-bottom: 30px;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background-color: #1782f444; // Голубая линия
+    }
+
+    .submenu-item {
+      text-decoration: none;
+      color: #333;
+      margin-left: 10px;
+      transition: all 0.7s ease;
+      padding: 5px;
+      border-radius: 3px;
+
+      .icon {
+        margin-left: 10px;
+        color: #33333344;
+        transition: all 0.7s ease;
+      }
+
+      .red-icon {
+        color: #e57373; // Красим иконку в красный цвет #EF5350 #FF6F61 #e57373
+      }
+
+      &:hover .icon {
+        color: #333333;
+      }
+
+      &:hover {
+        background: #05d8f411;
+        color: #4020f7ce;
+      }
+    }
+  }
+
+  .notification-circle {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    //  width: 20px;
+    height: 20px;
+    //   border-radius: 50%;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    margin-left: 5px;
+
+    &.fixed-count {
+      background-color: #e50fed;
+    }
+
+    &.range-count {
+      background-color: #900af0;
+    }
+
+    &.miss-count {
+      background-color: #f50d0d;
+    }
+  }
+}

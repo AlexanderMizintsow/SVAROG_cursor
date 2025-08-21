@@ -1,0 +1,312 @@
+.chat-modal {
+  display: flex;
+  position: fixed;
+  flex-direction: column;
+  width: 100%;
+  max-width: 600px;
+  height: 80vh;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  z-index: 777;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.9); // Начальное состояние для анимации
+  opacity: 0; // Начальное состояние для анимации
+  visibility: hidden; // Начальное состояние для анимации
+  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+
+  &.open {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .chat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background-color: #f5f5f7;
+    border-bottom: 1px solid #e0e0e0;
+
+    h3 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: #1c1c1e;
+    }
+
+    .close-button {
+      background: none;
+      border: none;
+      font-size: 24px;
+      color: #938f8e;
+      cursor: pointer;
+      transition: color 0.2s ease;
+      right: 10px;
+      top: 10px;
+      &:hover {
+        color: #e23e15;
+      }
+    }
+  }
+
+  .chat-messages {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    background-color: #ffffff;
+    max-height: 850px;
+
+    .message {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 12px;
+
+      &.sent {
+        align-items: flex-start; // Сообщение пользователя слева
+
+        .message-content {
+          background-color: #e5e5ea; // Цвет фона для собеседника
+          color: #1c1c1e; // Цвет текста для собеседника
+        }
+      }
+
+      &.received {
+        align-items: flex-end; // Сообщение собеседника справа
+
+        .message-content {
+          background-color: #007aff; // Цвет фона для пользователя
+          color: #ffffff; // Цвет текста для пользователя
+        }
+      }
+
+      .message-content {
+        max-width: 70%;
+        padding: 8px 12px;
+        border-radius: 12px;
+        font-size: 14px;
+        line-height: 1.4;
+        word-wrap: break-word;
+      }
+
+      .message-time {
+        margin-top: 4px;
+        font-size: 12px;
+        color: #8e8e93;
+      }
+      .author-label {
+        margin-top: 4px;
+        font-size: 12px;
+        color: #8e8e93;
+      }
+    }
+  }
+
+  .chat-input {
+    display: flex;
+    align-items: flex-start;
+    margin-top: 10px;
+    margin-left: 10px;
+
+    textarea {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 16px;
+      line-height: 1.5;
+      transition: border-color 0.3s;
+
+      &:focus {
+        border-color: #007bff; // Цвет при фокусе
+        outline: none; // Убираем стандартное выделение
+      }
+
+      &::placeholder {
+        color: #aaa; // Цвет плейсхолдера
+      }
+    }
+
+    button {
+      margin-left: 10px;
+      margin-right: 10px;
+      padding: 10px 15px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+
+      &:hover {
+        background-color: #0056b3; // Цвет кнопки при наведении
+      }
+    }
+  }
+
+  .chat-participants {
+    padding: 16px;
+    background-color: #f5f5f7;
+    border-top: 1px solid #e0e0e0;
+
+    h4 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      color: #1c1c1e;
+    }
+
+    .participants-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+
+      .participant {
+        padding: 4px 8px;
+        background-color: #e5e5ea;
+        border-radius: 12px;
+        font-size: 12px;
+        color: #1c1c1e;
+      }
+    }
+  }
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 776;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+
+  &.open {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+.message {
+  &.unread {
+    background-color: #f0f8ff; // Цвет для непрочитанных сообщений
+  }
+  &.read {
+    background-color: #fff; // Цвет для прочитанных сообщений
+  }
+}
+
+.emoji-picker-container-task {
+  position: absolute;
+  bottom: 190px; /* или соответствующее значение, чтобы позиционировать над textarea */
+  right: 10px; /* или по вашему дизайну */
+  z-index: 999;
+  background: #fff;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+}
+//*******************
+.reply-preview {
+  background-color: #f5f5f5;
+  border-left: 3px solid #4a76a8;
+  padding: 8px 12px;
+  margin: 0 15px 10px;
+  border-radius: 0 4px 4px 0;
+  position: relative;
+
+  .reply-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: #777;
+    margin-bottom: 4px;
+
+    .cancel-reply {
+      background: none;
+      border: none;
+      color: #777;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0 5px;
+
+      &:hover {
+        color: #333;
+      }
+    }
+  }
+
+  .reply-content {
+    font-size: 13px;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    .you-label {
+      color: #4a76a8;
+      font-weight: bold;
+      margin-right: 5px;
+    }
+
+    .sender-label {
+      color: #e74c3c;
+      font-weight: bold;
+      margin-right: 5px;
+    }
+  }
+}
+
+.message {
+  &-reply {
+    background: #f1f1f1;
+    border-left: 3px solid #4a76a8;
+    padding: 5px 10px;
+    margin-bottom: 5px;
+    border-radius: 4px;
+    color: #555;
+    font-size: 0.9em;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+
+    &:hover {
+      background: #e0e0e0;
+    }
+
+    .reply-line {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: #4a76a8;
+    }
+
+    .reply-content {
+      padding-left: 8px;
+
+      .you-label,
+      .sender-label {
+        font-weight: bold;
+        color: #4a76a8;
+      }
+    }
+  }
+}
+
+.highlighted {
+  animation: highlight 2s ease;
+}
+
+@keyframes highlight {
+  0% {
+    background-color: rgba(74, 118, 168, 0.3);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
