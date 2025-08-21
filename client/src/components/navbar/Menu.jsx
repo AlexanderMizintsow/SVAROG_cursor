@@ -46,14 +46,20 @@ const Menu = ({ title, menuItems }) => {
                   {item.name === 'Рабочие группы' && (
                     <>
                       {groupCounts.fixedCount > 0 && (
-                        <span className="notification-circle fixed-count">
+                        <span
+                          className="notification-circle fixed-count"
+                          title="Фиксированные задачи"
+                        >
                           {groupCounts.fixedCount}
                         </span>
                       )}
 
                       {groupCounts.rangeCount > 0 && (
                         <>
-                          <span className="notification-circle range-count">
+                          <span
+                            className="notification-circle range-count"
+                            title="Задачи с диапазоном"
+                          >
                             {groupCounts.rangeCount}
                           </span>
                           <FcPlanner />
@@ -90,8 +96,15 @@ const Menu = ({ title, menuItems }) => {
                     onClick={handleMissedCountClick}
                     className="notification-circle miss-count"
                     title="Пропущенные звонки"
+                    data-count={
+                      missedCount > 99
+                        ? missedCount > 999
+                          ? '999+'
+                          : '99+'
+                        : missedCount.toString()
+                    }
                   >
-                    {missedCount}
+                    {missedCount > 999 ? '999+' : missedCount}
                   </span>
                 )}
               </span>

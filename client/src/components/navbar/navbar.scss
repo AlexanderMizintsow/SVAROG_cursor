@@ -47,15 +47,33 @@
     align-items: center;
   }
   .notification-reminder {
-    margin-left: 5px;
-    color: red;
+    margin-left: 8px;
+    color: #ff4757;
     animation: pulse 1.8s infinite;
     transition: all 0.3s ease;
+    font-size: 18px;
+
+    &:hover {
+      transform: scale(1.1);
+      color: #ff3742;
+    }
   }
+
   .notification-reminder-count {
-    font-size: 14px;
-    margin-left: 5px;
-    color: red;
+    font-size: 13px;
+    margin-left: 6px;
+    color: #ff4757;
+    font-weight: 600;
+    background: rgba(255, 71, 87, 0.1);
+    padding: 2px 6px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 71, 87, 0.2);
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: rgba(255, 71, 87, 0.15);
+      border-color: rgba(255, 71, 87, 0.3);
+    }
   }
   .submenu {
     display: flex;
@@ -107,24 +125,135 @@
     display: inline-flex;
     justify-content: center;
     align-items: center;
-    //  width: 20px;
-    height: 20px;
-    //   border-radius: 50%;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 8px;
+    border-radius: 12px;
     color: white;
-    font-size: 12px;
-    font-weight: bold;
-    margin-left: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-left: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    letter-spacing: 0.5px;
+
+    // Анимация пульсации для miss-count
+    &.miss-count {
+      background: linear-gradient(135deg, #ff4757, #ff3742);
+      animation: pulse-glow 2s ease-in-out infinite;
+
+      &:hover {
+        transform: scale(1.1);
+        box-shadow: 0 4px 16px rgba(255, 71, 87, 0.4);
+      }
+
+      // Добавляем внутреннее свечение
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), transparent);
+        border-radius: 12px;
+        pointer-events: none;
+      }
+
+      // Адаптивный размер для больших чисел
+      &[data-count='99+'] {
+        min-width: 32px;
+        font-size: 10px;
+      }
+
+      &[data-count='999+'] {
+        min-width: 36px;
+        font-size: 9px;
+      }
+    }
 
     &.fixed-count {
-      background-color: #e50fed;
+      background: linear-gradient(135deg, #e50fed, #c44569);
+      &:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 16px rgba(229, 15, 237, 0.3);
+      }
     }
 
     &.range-count {
-      background-color: #900af0;
+      background: linear-gradient(135deg, #900af0, #6c5ce7);
+      &:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 16px rgba(144, 10, 240, 0.3);
+      }
     }
 
-    &.miss-count {
-      background-color: #f50d0d;
+    // Общие hover эффекты
+    &:hover {
+      transform: translateY(-1px);
+    }
+
+    // Анимация появления
+    animation: slideIn 0.3s ease-out;
+  }
+
+  // Анимация пульсации для miss-count
+  @keyframes pulse-glow {
+    0%,
+    100% {
+      box-shadow: 0 2px 8px rgba(255, 71, 87, 0.15);
+    }
+    50% {
+      box-shadow: 0 4px 16px rgba(255, 71, 87, 0.4);
+    }
+  }
+
+  // Анимация появления
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px) scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  // Анимация пульсации для напоминаний
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  // Адаптивность для мобильных устройств
+  @media (max-width: 768px) {
+    .notification-circle {
+      min-width: 20px;
+      height: 20px;
+      font-size: 10px;
+      padding: 0 6px;
+      margin-left: 6px;
+
+      &.miss-count {
+        animation: pulse-glow 3s ease-in-out infinite;
+      }
+    }
+
+    .notification-reminder-count {
+      font-size: 12px;
+      padding: 1px 4px;
     }
   }
 }
