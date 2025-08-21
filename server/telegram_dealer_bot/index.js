@@ -111,10 +111,12 @@ app.post(
 
         // Дополнительная проверка - если имя файла содержит иероглифы, заменяем на английское
         let finalFilename = safeFilename
+        // Проверяем только на действительно проблемные символы, исключая русские буквы
         if (
-          /[\u4e00-\u9fff\u3400-\u4dbf\u20000-\u2a6df\u2a700-\u2b73f\u2b740-\u2b81f\u2b820-\u2ceaf\uf900-\ufaff\u3300-\u33ff\ufe30-\ufe4f\uf900-\ufaff\u3300-\u33ff\ufe30-\ufe4f]/.test(
+          /[\u4e00-\u9fff\u3400-\u4dbf\u20000-\u2a6df\u2a700-\u2b73f\u2b740-\u2b81f\u2b820-\u2ceaf\uf900-\ufaff\u3300-\u33ff\ufe30-\ufe4f]/.test(
             safeFilename
-          )
+          ) &&
+          !/^[a-zA-Z0-9а-яёА-ЯЁ_\-\s.]+$/u.test(safeFilename)
         ) {
           console.log('Обнаружены иероглифы в имени файла, заменяем на английское имя')
           const extension = safeFilename.split('.').pop()
