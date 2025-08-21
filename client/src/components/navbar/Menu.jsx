@@ -23,9 +23,7 @@ const Menu = ({ title, menuItems }) => {
   }
 
   const userId = user ? user.id : null
-  const userReminders = reminders.filter(
-    (reminder) => reminder.user_id === selectedEmployeeId
-  )
+  const userReminders = reminders.filter((reminder) => reminder.user_id === selectedEmployeeId)
 
   const toggleSubMenu = (index) => {
     setOpenCloseIndex(openCloseIndex === index ? null : index)
@@ -74,9 +72,7 @@ const Menu = ({ title, menuItems }) => {
                   {userReminders.length ? (
                     <span className="notification-container">
                       <IoNotificationsOffOutline className="notification-reminder" />
-                      <span className="notification-reminder-count">
-                        -{userReminders.length}-{' '}
-                      </span>
+                      <span className="notification-reminder-count">-{userReminders.length}- </span>
                     </span>
                   ) : (
                     ''
@@ -114,9 +110,7 @@ const Menu = ({ title, menuItems }) => {
 
                   {subItem.icon && (
                     <subItem.icon
-                      className={`icon ${
-                        subItem.name === 'Пропущенные звонки' ? ' red-icon' : ''
-                      }`}
+                      className={`icon ${subItem.name === 'Пропущенные звонки' ? ' red-icon' : ''}`}
                     />
                   )}
                 </Link>

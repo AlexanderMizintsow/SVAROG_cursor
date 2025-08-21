@@ -32,7 +32,7 @@ function App() {
   const { setUser, setUsers, user } = useUserStore()
   const { fetchTasks } = useTasksStore()
   const setMissedCount = callsNotificationStore((state) => state.setMissedCount)
-  const { appRestart } = callsNotificationStore()
+  const { appRestart, missedCallFilters } = callsNotificationStore()
   const [showEmployee, setShowEmployee] = useState(true)
   const setReminders = useRemindersStore((state) => state.setReminders)
   const setGroupCounts = useRemindersStore((state) => state.setGroupCounts)
@@ -360,32 +360,55 @@ function App() {
     }*/
     const fetchInitialMissedCount = async () => {
       try {
-        const response = await axios.get(`${API_BASE_URL}5004/api/calls?status=missed`)
-        const { data: callsData, total } = response.data // Извлекаем массив звонков и общее количество
+        // Формируем параметры запроса с учетом фильтров
+        const params = {
+          status: 'missed',
+          limit: 1000, // Берем большое количество для точного подсчета
+        }
 
-        // Обновляем счетчик пропущенных звонков (используем total, а не filteredCalls.length)
-        setMissedCount(total) // total уже содержит общее количество пропущенных звонков
+        // Если есть информация о пользователе и его правах
+        if (missedCallFilters.userInfo) {
+          const { userInfo } = missedCallFilters
+
+          // Если пользователь может видеть все звонки
+          if (userInfo.canViewAllCalls) {
+            params.canViewAllCalls = true
+
+            // Если это руководитель отдела, добавляем фильтр по отделу
+            if (userInfo.isDepartmentHead && userInfo.department_id) {
+              params.departmentId = userInfo.department_id
+            }
+
+            // Если выбран конкретный сотрудник
+            if (
+              missedCallFilters.selectedEmployee &&
+              missedCallFilters.selectedEmployee !== 'undefined'
+            ) {
+              params.employeeId = missedCallFilters.selectedEmployee
+            }
+
+            // Фильтр по неопределенным сотрудникам
+            if (missedCallFilters.selectedUnassignedEmployee) {
+              params.unassigned = true
+            }
+          } else {
+            // Обычный пользователь - видит только свои звонки
+            params.userId = user?.id
+          }
+        }
+
+        const response = await axios.get(`${API_BASE_URL}5004/api/calls`, { params })
+        const { total } = response.data
+
+        setMissedCount(total)
       } catch (error) {
         console.error('Ошибка при получении начального количества пропущенных звонков:', error)
       }
     }
 
     const handleNewCall = async () => {
-      try {
-        const response = await axios.get(`${API_BASE_URL}5004/api/calls?status=missed`)
-        const calls = response.data
-
-        // Фильтрация в соответствии с настройками
-        const filteredCalls = calls.filter((call) => {
-          const callerNumber = parseInt(call.caller_number, 10)
-          return showEmployee || callerNumber < 0 || callerNumber > 999
-        })
-
-        const missedCount = filteredCalls.length // Обновляем счетчик
-        setMissedCount(missedCount) // Обновляем состояние в Zustand
-      } catch (error) {
-        console.error('Ошибка при получении количества пропущенных звонков:', error)
-      }
+      // Вызываем ту же функцию для обновления счетчика
+      await fetchInitialMissedCount()
     }
 
     socket.on('new_call', handleNewCall) // Устанавливаем слушатель для новых звонков
@@ -432,7 +455,7 @@ function App() {
       socket.off('reminders') // Убираем слушатель для напоминаний
       socket.disconnect() // Отключаем WebSocket при размонтировании
     }
-  }, [setUser, userId, setMissedCount, showEmployee, appRestart, setReminders])
+  }, [setUser, userId, setMissedCount, showEmployee, appRestart, setReminders, missedCallFilters])
 
   useEffect(() => {
     if (userId) {

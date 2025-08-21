@@ -174,7 +174,16 @@ app.get('/api/reminders', async (req, res) => {
 
 // Список информации звонков
 app.get('/api/calls', async (req, res) => {
-  const { status, page = 1, limit = 50, userId, unassigned, receiverId } = req.query
+  const {
+    status,
+    page = 1,
+    limit = 50,
+    userId,
+    unassigned,
+    receiverId,
+    departmentId,
+    employeeId,
+  } = req.query
 
   try {
     const offset = (page - 1) * limit
@@ -193,17 +202,35 @@ app.get('/api/calls', async (req, res) => {
       'LEFT JOIN users AS users2 ON user_phones2.user_id = users2.id',
     ]
 
-    // Фильтр по userId (если передан)
-    if (userId) {
+    // Фильтр по userId (если передан и пользователь не имеет прав на просмотр всех звонков)
+    if (userId && !req.query.canViewAllCalls) {
       whereConditions.push(
         `(users.id = $${params.length + 1} OR users2.id = $${params.length + 1})`
       )
       params.push(userId)
     }
 
-    // Фильтр по незакрепленным звонкам
+    // Фильтр по отделу (для руководителей отделов)
+    if (departmentId && req.query.canViewAllCalls) {
+      whereConditions.push(
+        `(users.department_id = $${params.length + 1} OR users2.department_id = $${
+          params.length + 1
+        })`
+      )
+      params.push(departmentId)
+    }
+
+    // Фильтр по конкретному сотруднику
+    if (employeeId && employeeId !== 'undefined') {
+      whereConditions.push(
+        `(users.id = $${params.length + 1} OR users2.id = $${params.length + 1})`
+      )
+      params.push(employeeId)
+    }
+
+    // Фильтр по незакрепленным звонкам (где получатель не определен)
     if (unassigned) {
-      whereConditions.push('(users.id IS NULL AND dealers.id IS NULL)')
+      whereConditions.push('(users2.id IS NULL AND dealers2.id IS NULL)')
     }
 
     // Фильтр по получателю
@@ -1061,4 +1088,116 @@ app.get('/api/reclamation-ratings-stats', async (req, res) => {
 // Запуск сервера
 server.listen(port, '0.0.0.0', () => {
   console.log(`Server running on port ${port}`)
+})
+
+// Получение информации о пользователе с ролью и отделом
+app.get('/api/user-info/:userId', async (req, res) => {
+  const { userId } = req.params
+
+  try {
+    const query = `
+      SELECT 
+        u.id,
+        u.first_name,
+        u.middle_name,
+        u.last_name,
+        u.department_id,
+        u.supervisor_id,
+        p.name as position_name,
+        r.name as role_name,
+        d.name as department_name,
+        d.head_user_id
+      FROM users u
+      LEFT JOIN positions p ON u.position_id = p.id
+      LEFT JOIN roles r ON u.role_id = r.id
+      LEFT JOIN departments d ON u.department_id = d.id
+      WHERE u.id = $1
+    `
+
+    const result = await dbPool.query(query, [userId])
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Пользователь не найден' })
+    }
+
+    const userInfo = result.rows[0]
+
+    // Определяем, является ли пользователь руководителем отдела (по должности)
+    const isDepartmentHead = userInfo.position_name === 'Руководитель отдела'
+
+    // Определяем, является ли пользователь администратором
+    const isAdmin = userInfo.role_name === 'Администратор'
+
+    // Определяем, является ли пользователь НОК
+    const isNOK = userInfo.position_name === 'НОК'
+
+    res.json({
+      ...userInfo,
+      isDepartmentHead,
+      isAdmin,
+      isNOK,
+      canViewAllCalls: isNOK || isAdmin || isDepartmentHead,
+    })
+  } catch (error) {
+    console.error('Ошибка при получении информации о пользователе:', error)
+    res.status(500).json({ error: 'Ошибка сервера' })
+  }
+})
+
+// Получение сотрудников отдела для руководителя
+app.get('/api/department-employees/:departmentId', async (req, res) => {
+  const { departmentId } = req.params
+
+  try {
+    const query = `
+      SELECT 
+        u.id,
+        u.first_name,
+        u.middle_name,
+        u.last_name,
+        p.name as position_name,
+        d.name as department_name
+      FROM users u
+      LEFT JOIN positions p ON u.position_id = p.id
+      LEFT JOIN departments d ON u.department_id = d.id
+      WHERE u.department_id = $1
+      ORDER BY u.last_name, u.first_name
+    `
+
+    const result = await dbPool.query(query, [departmentId])
+    res.json(result.rows)
+  } catch (error) {
+    console.error('Ошибка при получении сотрудников отдела:', error)
+    res.status(500).json({ error: 'Ошибка сервера' })
+  }
+})
+
+// Получение всех сотрудников, которые есть в звонках (для фильтров)
+app.get('/api/calls-employees', async (req, res) => {
+  try {
+    const query = `
+      SELECT DISTINCT
+        u.id,
+        u.first_name,
+        u.middle_name,
+        u.last_name,
+        p.name as position_name,
+        d.name as department_name
+      FROM users u
+      LEFT JOIN positions p ON u.position_id = p.id
+      LEFT JOIN departments d ON u.department_id = d.id
+      WHERE u.id IN (
+        SELECT DISTINCT user_id FROM user_phones WHERE user_id IS NOT NULL
+        UNION
+        SELECT DISTINCT user_id FROM call_processing_logs WHERE user_id IS NOT NULL
+      )
+      ORDER BY u.last_name, u.first_name
+    `
+
+    const result = await dbPool.query(query)
+    res.json(result.rows)
+  } catch (error) {
+    console.error('Ошибка при получении сотрудников из звонков:', error)
+    res.status(500).json({ error: 'Ошибка сервера' })
+  }
 })

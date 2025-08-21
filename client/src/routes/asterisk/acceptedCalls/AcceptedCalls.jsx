@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import axios from 'axios'
 import Toastify from 'toastify-js'
 import { io } from 'socket.io-client'
@@ -25,130 +25,224 @@ const AcceptedCalls = () => {
     limit: 7,
     total: 0,
   })
-  const userId = user?.id
-  const position = user?.position
 
-  const fetchAcceptedCalls = async (page = 1) => {
+  // Новые состояния для информации о пользователе
+  const [userInfo, setUserInfo] = useState(null)
+  const [departmentEmployees, setDepartmentEmployees] = useState([])
+  const [allCallEmployees, setAllCallEmployees] = useState([])
+  const [selectedEmployee, setSelectedEmployee] = useState(null)
+  const [selectedUnassignedEmployee, setSelectedUnassignedEmployee] = useState(false)
+
+  const userId = user?.id
+
+  // Мемоизируем API URL для предотвращения ререндеров
+  const apiBaseUrl = useMemo(() => API_BASE_URL, [])
+
+  // Функция загрузки информации о пользователе
+  const fetchUserInfo = useCallback(async () => {
+    if (!userId) return
+
     try {
-      setLoading(true)
-      const response = await axios.get(`${API_BASE_URL}5004/api/calls`, {
-        params: {
+      const response = await axios.get(`${apiBaseUrl}5004/api/user-info/${userId}`)
+      setUserInfo(response.data)
+
+      // Если пользователь руководитель отдела или НОК, загружаем сотрудников отдела
+      if ((response.data.isDepartmentHead || response.data.isNOK) && response.data.department_id) {
+        const employeesResponse = await axios.get(
+          `${apiBaseUrl}5004/api/department-employees/${response.data.department_id}`
+        )
+        setDepartmentEmployees(employeesResponse.data)
+        // Для НОК и руководителей отдела используем только сотрудников отдела
+        setAllCallEmployees(employeesResponse.data)
+      } else if (response.data.isAdmin) {
+        // Администратор видит всех сотрудников из звонков
+        const allEmployeesResponse = await axios.get(`${apiBaseUrl}5004/api/calls-employees`)
+        setAllCallEmployees(allEmployeesResponse.data)
+        setDepartmentEmployees([])
+      } else {
+        // Обычные пользователи не загружают списки сотрудников
+        setDepartmentEmployees([])
+        setAllCallEmployees([])
+      }
+    } catch (error) {
+      console.error('Ошибка при получении информации о пользователе:', error)
+    }
+  }, [userId, apiBaseUrl])
+
+  const fetchAcceptedCalls = useCallback(
+    async (page = 1) => {
+      if (!userInfo) return // Не загружаем звонки пока нет информации о пользователе
+
+      try {
+        setLoading(true)
+
+        const params = {
           status: 'accepted',
           page,
           limit: pagination.limit,
-          ...(position !== 'НОК' && { userId }),
-        },
-      })
+        }
 
-      const { data, total } = response.data
+        // Если пользователь может видеть все звонки (НОК, администратор, руководитель отдела)
+        if (userInfo.canViewAllCalls) {
+          params.canViewAllCalls = true
 
-      const filteredData = data
-        .filter((call) => {
-          if (!showEmployee) {
-            const callerNumber = parseInt(call.caller_number, 10)
-            return callerNumber < 0 || callerNumber > 999
+          // Если это руководитель отдела, добавляем фильтр по отделу
+          if (userInfo.isDepartmentHead && userInfo.department_id) {
+            params.departmentId = userInfo.department_id
           }
-          return true
-        })
-        .map((call) => ({
-          id: call.call_id,
-          text: `Принятый звонок от: ${call.caller_number}`,
-          time: new Date(call.accepted_at).toLocaleString('ru-RU', {
-            dateStyle: 'short',
-            timeStyle: 'short',
-          }),
-          callerName: call.caller_name,
-          receiverName: call.receiver_name,
-          callerNumber: call.caller_number,
-          receiverNumber: call.receiver_number,
-          dealerId: call.dealer_id,
-          dateTime: new Date(call.accepted_at),
-          status: call.status,
+
+          // Если выбран конкретный сотрудник
+          if (selectedEmployee && selectedEmployee !== 'undefined') {
+            params.employeeId = selectedEmployee
+          }
+
+          // Фильтр по неопределенным сотрудникам
+          if (selectedUnassignedEmployee) {
+            // Неопределенные по сотруднику (где сотрудник не определен)
+            params.unassigned = true
+          }
+        } else {
+          // Обычный пользователь - видит только свои звонки
+          params.userId = userId
+        }
+
+        const response = await axios.get(`${apiBaseUrl}5004/api/calls`, { params })
+
+        const { data, total } = response.data
+
+        const filteredData = data
+          .filter((call) => {
+            if (!showEmployee) {
+              const callerNumber = parseInt(call.caller_number, 10)
+              return callerNumber < 0 || callerNumber > 999
+            }
+            return true
+          })
+          .map((call) => ({
+            id: call.call_id,
+            text: `Принятый звонок от: ${call.caller_number}`,
+            time: new Date(call.accepted_at).toLocaleString('ru-RU', {
+              dateStyle: 'short',
+              timeStyle: 'short',
+            }),
+            callerName: call.caller_name,
+            receiverName: call.receiver_name,
+            callerNumber: call.caller_number,
+            receiverNumber: call.receiver_number,
+            dealerId: call.dealer_id,
+            dateTime: new Date(call.accepted_at),
+            status: call.status,
+          }))
+
+        const sortedData = filteredData.sort((a, b) => b.dateTime - a.dateTime)
+
+        setAcceptedCalls(sortedData)
+        setPagination((prev) => ({
+          ...prev,
+          page,
+          total,
         }))
+      } catch (error) {
+        console.error('Ошибка при получении данных о звонках:', error)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [
+      userInfo,
+      selectedEmployee,
+      pagination.limit,
+      userId,
+      showEmployee,
+      apiBaseUrl,
+      selectedUnassignedEmployee,
+    ]
+  )
 
-      const sortedData = filteredData.sort((a, b) => b.dateTime - a.dateTime)
-
-      setAcceptedCalls(sortedData)
-      setPagination((prev) => ({
-        ...prev,
-        page,
-        total,
-      }))
-    } catch (error) {
-      console.error('Ошибка при получении данных о звонках:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchUserSettings = async () => {
+  const fetchUserSettings = useCallback(async () => {
     const userData = JSON.parse(localStorage.getItem('userData'))
     const userId = userData ? userData.id : null
 
     if (userId) {
       try {
-        const response = await axios.get(
-          `${API_BASE_URL}5004/api/calls-settings-accepted/${userId}`
-        )
+        const response = await axios.get(`${apiBaseUrl}5004/api/calls-settings-accepted/${userId}`)
         setShowEmployee(response.data.showAcceptedCallsEmployee)
       } catch (error) {
         console.error('Ошибка получения настроек пользователя:', error)
       }
     }
-  }
+  }, [apiBaseUrl])
 
-  const fetchDealers = async () => {
+  const fetchDealers = useCallback(async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}5003/api/dealers/all`)
+      const response = await axios.get(`${apiBaseUrl}5003/api/dealers/all`)
       setDealers(response.data)
     } catch (error) {
       console.error('Ошибка при получении данных о дилерах:', error)
     }
-  }
+  }, [apiBaseUrl])
 
-  const fetchCompanies = async () => {
+  const fetchCompanies = useCallback(async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}5003/api/companies`)
+      const response = await axios.get(`${apiBaseUrl}5003/api/companies`)
       setCompanies(response.data)
     } catch (error) {
       console.error('Ошибка при получении данных о компаниях:', error)
     }
-  }
+  }, [apiBaseUrl])
 
+  // Инициализация данных только один раз при монтировании
   useEffect(() => {
-    const socket = io(`${API_BASE_URL}5004`)
-
     const initData = async () => {
       try {
-        await Promise.all([
-          fetchUserSettings(),
-          fetchDealers(),
-          fetchCompanies(),
-          fetchAcceptedCalls(1),
-        ])
+        await Promise.all([fetchUserInfo(), fetchUserSettings(), fetchDealers(), fetchCompanies()])
       } catch (error) {
         console.error('Ошибка инициализации данных:', error)
       }
     }
 
     initData()
+  }, []) // Пустой массив зависимостей - выполняется только один раз
+
+  // Загружаем звонки когда получена информация о пользователе
+  useEffect(() => {
+    if (userInfo) {
+      fetchAcceptedCalls(1)
+    }
+  }, [userInfo, fetchAcceptedCalls])
+
+  // Загружаем звонки при изменении фильтров
+  useEffect(() => {
+    if (userInfo) {
+      fetchAcceptedCalls(pagination.page)
+    }
+  }, [
+    selectedEmployee,
+    showEmployee,
+    fetchAcceptedCalls,
+    pagination.page,
+    selectedUnassignedEmployee,
+  ])
+
+  // Socket подключение
+  useEffect(() => {
+    const socket = io(`${apiBaseUrl}5004`)
 
     socket.on('new_call', () => {
-      fetchAcceptedCalls(pagination.page)
+      if (userInfo) {
+        fetchAcceptedCalls(pagination.page)
+      }
     })
 
     return () => {
       socket.disconnect()
     }
-  }, [showEmployee])
+  }, [apiBaseUrl, userInfo, pagination.page, fetchAcceptedCalls])
 
-  const handlePageChange = (event, newPage) => {
+  // Обработчик изменения страницы
+  const handlePageChange = useCallback((event, newPage) => {
     setPagination((prev) => ({ ...prev, page: newPage }))
-  }
-
-  useEffect(() => {
-    fetchAcceptedCalls(pagination.page)
-  }, [pagination.page, showEmployee])
+  }, [])
 
   const handleOpen = (notification) => {
     setPhoneNumber(notification.callerNumber)
@@ -176,7 +270,7 @@ const AcceptedCalls = () => {
     if (!selectedDealer) return alert('Выберите дилера')
 
     try {
-      const response = await axios.post(`${API_BASE_URL}5004/api/add-phone`, {
+      const response = await axios.post(`${apiBaseUrl}5004/api/add-phone`, {
         dealerId: selectedDealer,
         phoneNumber,
         phoneType,
@@ -224,6 +318,118 @@ const AcceptedCalls = () => {
 
   return (
     <div className="container">
+      {/* Блок с кнопками фильтрации по сотрудникам (только для пользователей с правами на просмотр всех звонков) */}
+      {userInfo?.canViewAllCalls && (
+        <div
+          className="filter-buttons"
+          style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}
+        >
+          <h4>Фильтр по сотруднику:</h4>
+          <button
+            onClick={() => {
+              setSelectedEmployee(null)
+              setSelectedUnassignedEmployee(false)
+            }}
+            style={{
+              padding: '8px 16px',
+              backgroundColor:
+                selectedEmployee === null && !selectedUnassignedEmployee ? '#1976d2' : '#f0f0f0',
+              color: selectedEmployee === null && !selectedUnassignedEmployee ? 'white' : 'black',
+              border: '1px solid #ddd',
+              borderRadius: '4px',
+              cursor: 'pointer',
+            }}
+          >
+            {userInfo.isAdmin ? 'Все сотрудники' : 'Сотрудники отдела'}
+          </button>
+
+          <button
+            onClick={() => {
+              setSelectedUnassignedEmployee(!selectedUnassignedEmployee)
+              setSelectedEmployee(null)
+            }}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: selectedUnassignedEmployee ? '#1976d2' : '#f0f0f0',
+              color: selectedUnassignedEmployee ? 'white' : 'black',
+              border: '1px solid #ddd',
+              borderRadius: '4px',
+              cursor: 'pointer',
+            }}
+          >
+            Неопределенный сотрудник
+          </button>
+
+          {/* Кнопки для конкретных сотрудников отдела (для НОК и руководителей) */}
+          {(userInfo.isDepartmentHead || userInfo.isNOK) &&
+            departmentEmployees.map((employee) => (
+              <button
+                key={employee.id}
+                onClick={() => {
+                  setSelectedEmployee(employee.id)
+                  setSelectedUnassignedEmployee(false)
+                }}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: selectedEmployee === employee.id ? '#1976d2' : '#f0f0f0',
+                  color: selectedEmployee === employee.id ? 'white' : 'black',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                }}
+              >
+                {`${employee.last_name} ${employee.first_name}`}
+              </button>
+            ))}
+
+          {/* Кнопки для всех сотрудников (только для администраторов) */}
+          {userInfo.isAdmin &&
+            allCallEmployees.map((employee) => (
+              <button
+                key={employee.id}
+                onClick={() => {
+                  setSelectedEmployee(employee.id)
+                  setSelectedUnassignedEmployee(false)
+                }}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: selectedEmployee === employee.id ? '#1976d2' : '#f0f0f0',
+                  color: selectedEmployee === employee.id ? 'white' : 'black',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                }}
+                title={`${employee.position_name || 'Должность не указана'} - ${
+                  employee.department_name || 'Отдел не указан'
+                }`}
+              >
+                {`${employee.last_name} ${employee.first_name}`}
+              </button>
+            ))}
+        </div>
+      )}
+
+      {/* Информация о текущих правах пользователя */}
+      {userInfo && (
+        <div
+          style={{
+            marginBottom: '20px',
+            padding: '10px',
+            backgroundColor: '#f5f5f5',
+            borderRadius: '4px',
+            fontSize: '14px',
+          }}
+        >
+          <strong>Текущие права:</strong>
+          {userInfo.isNOK && ' НОК (видит все звонки)'}
+          {userInfo.isAdmin && ' Администратор (видит все звонки)'}
+          {userInfo.isDepartmentHead &&
+            ` Руководитель отдела "${userInfo.department_name}" (видит звонки отдела)`}
+          {!userInfo.canViewAllCalls && ' Обычный пользователь (видит только свои звонки)'}
+        </div>
+      )}
+
       <NotificationList
         title="Принятые звонки"
         notifications={acceptedCalls}

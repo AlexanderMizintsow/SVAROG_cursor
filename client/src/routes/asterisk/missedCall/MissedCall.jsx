@@ -1,14 +1,17 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import axios from 'axios'
+import Toastify from 'toastify-js'
 import { io } from 'socket.io-client'
 import { CircularProgress, Pagination } from '@mui/material'
 import NotificationList from '../../../components/notificationList/NotificationList'
 import { Modal, Box, TextField, Button, Select, MenuItem } from '@mui/material'
 import { API_BASE_URL } from '../../../../config'
 import useUserStore from '../../../store/userStore'
+import callsNotificationStore from '../../../store/callsNotificationStore'
 
 const MissedCalls = () => {
   const { user } = useUserStore()
+  const { setMissedCallFilters } = callsNotificationStore()
   const [isLoading, setLoading] = useState(true)
   const [showEmployee, setShowEmployee] = useState(true)
   const [missedCalls, setMissedCalls] = useState([])
@@ -24,38 +27,88 @@ const MissedCalls = () => {
     limit: 7,
     total: 0,
   })
-  const [selectedReceiver, setSelectedReceiver] = useState(null)
-  const [availableReceivers, setAvailableReceivers] = useState([])
-  const [selectedEmployee, setSelectedEmployee] = useState(null) // null - все, 'undefined' - неопределенные, число - ID сотрудника
-  const [availableEmployees, setAvailableEmployees] = useState([])
+
+  // Новые состояния для информации о пользователе
+  const [userInfo, setUserInfo] = useState(null)
+  const [departmentEmployees, setDepartmentEmployees] = useState([])
+  const [allCallEmployees, setAllCallEmployees] = useState([])
+  const [selectedEmployee, setSelectedEmployee] = useState(null)
+  const [selectedUnassignedEmployee, setSelectedUnassignedEmployee] = useState(false)
 
   const userId = user?.id
-  const position = user?.position
-  // Функция загрузки звонков
+
+  // Мемоизируем API URL для предотвращения ререндеров
+  const apiBaseUrl = useMemo(() => API_BASE_URL, [])
+
+  // Функция загрузки информации о пользователе
+  const fetchUserInfo = useCallback(async () => {
+    if (!userId) return
+
+    try {
+      const response = await axios.get(`${apiBaseUrl}5004/api/user-info/${userId}`)
+      setUserInfo(response.data)
+
+      // Если пользователь руководитель отдела или НОК, загружаем сотрудников отдела
+      if ((response.data.isDepartmentHead || response.data.isNOK) && response.data.department_id) {
+        const employeesResponse = await axios.get(
+          `${apiBaseUrl}5004/api/department-employees/${response.data.department_id}`
+        )
+        setDepartmentEmployees(employeesResponse.data)
+        // Для НОК и руководителей отдела используем только сотрудников отдела
+        setAllCallEmployees(employeesResponse.data)
+      } else if (response.data.isAdmin) {
+        // Администратор видит всех сотрудников из звонков
+        const allEmployeesResponse = await axios.get(`${apiBaseUrl}5004/api/calls-employees`)
+        setAllCallEmployees(allEmployeesResponse.data)
+        setDepartmentEmployees([])
+      } else {
+        // Обычные пользователи не загружают списки сотрудников
+        setDepartmentEmployees([])
+        setAllCallEmployees([])
+      }
+    } catch (error) {
+      console.error('Ошибка при получении информации о пользователе:', error)
+    }
+  }, [userId, apiBaseUrl])
+
   const fetchMissedCalls = useCallback(
     async (page = 1) => {
+      if (!userInfo) return // Не загружаем звонки пока нет информации о пользователе
+
       try {
         setLoading(true)
-        const response = await axios.get(`${API_BASE_URL}5004/api/calls`, {
-          params: {
-            status: 'missed',
-            page,
-            limit: pagination.limit,
-            ...(position !== 'НОК' && { userId }), // Передаем userId только если position не "НОК"
-            ...(selectedEmployee !== null && {
-              [selectedEmployee === 'undefined' ? 'unassigned' : 'userId']:
-                selectedEmployee === 'undefined' ? true : selectedEmployee,
-            }),
-            ...(selectedReceiver !== null && {
-              receiverId: selectedReceiver === 'undefined' ? null : selectedReceiver,
-            }),
-          },
-        })
 
-        // Остальная часть функции остается без изменений
-        if (!Array.isArray(response.data?.data)) {
-          throw new Error('Invalid data format: expected array')
+        const params = {
+          status: 'missed',
+          page,
+          limit: pagination.limit,
         }
+
+        // Если пользователь может видеть все звонки (НОК, администратор, руководитель отдела)
+        if (userInfo.canViewAllCalls) {
+          params.canViewAllCalls = true
+
+          // Если это руководитель отдела, добавляем фильтр по отделу
+          if (userInfo.isDepartmentHead && userInfo.department_id) {
+            params.departmentId = userInfo.department_id
+          }
+
+          // Если выбран конкретный сотрудник
+          if (selectedEmployee && selectedEmployee !== 'undefined') {
+            params.employeeId = selectedEmployee
+          }
+
+          // Фильтр по неопределенным сотрудникам
+          if (selectedUnassignedEmployee) {
+            // Неопределенные по сотруднику (где сотрудник не определен)
+            params.unassigned = true
+          }
+        } else {
+          // Обычный пользователь - видит только свои звонки
+          params.userId = userId
+        }
+
+        const response = await axios.get(`${apiBaseUrl}5004/api/calls`, { params })
 
         const { data, total } = response.data
 
@@ -83,7 +136,7 @@ const MissedCalls = () => {
             status: call.status,
           }))
 
-        const sortedData = [...filteredData].sort((a, b) => b.dateTime - a.dateTime)
+        const sortedData = filteredData.sort((a, b) => b.dateTime - a.dateTime)
 
         setMissedCalls(sortedData)
         setPagination((prev) => ({
@@ -97,110 +150,113 @@ const MissedCalls = () => {
         setLoading(false)
       }
     },
-    [showEmployee, pagination.limit, position, selectedEmployee, selectedReceiver] // Добавьте position в зависимости
+    [
+      userInfo,
+      selectedEmployee,
+      pagination.limit,
+      userId,
+      showEmployee,
+      apiBaseUrl,
+      selectedUnassignedEmployee,
+    ]
   )
 
-  useEffect(() => {
-    const extractReceivers = () => {
-      const receiversSet = new Set()
-
-      missedCalls.forEach((call) => {
-        if (call.receiverName && call.receiverNumber) {
-          const key = `${call.receiverNumber}|${call.receiverName}`
-          receiversSet.add(key)
-        }
-      })
-
-      const receiversArray = Array.from(receiversSet).map((item) => {
-        const [number, name] = item.split('|')
-        return {
-          number,
-          name,
-          fullName: `${name} (${number})`,
-        }
-      })
-
-      setAvailableReceivers(receiversArray)
-    }
-
-    if (missedCalls.length > 0) {
-      extractReceivers()
-    }
-  }, [missedCalls])
-
-  // Загрузка дилеров
-  const fetchDealers = useCallback(async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}5003/api/dealers/all`)
-      setDealers(response.data)
-    } catch (error) {
-      console.error('Ошибка при получении данных о дилерах:', error)
-    }
-  }, [])
-
-  // Загрузка компаний
-  const fetchCompanies = useCallback(async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}5003/api/companies`)
-      setCompanies(response.data)
-    } catch (error) {
-      console.error('Ошибка при получении данных о компаниях:', error)
-    }
-  }, [])
-
-  // Загрузка настроек пользователя
   const fetchUserSettings = useCallback(async () => {
     const userData = JSON.parse(localStorage.getItem('userData'))
-    const userId = userData?.id
+    const userId = userData ? userData.id : null
 
     if (userId) {
       try {
-        const response = await axios.get(`${API_BASE_URL}5004/api/calls-settings-missed/${userId}`)
+        const response = await axios.get(`${apiBaseUrl}5004/api/calls-settings-missed/${userId}`)
         setShowEmployee(response.data.showMissedCallsEmployee)
       } catch (error) {
         console.error('Ошибка получения настроек пользователя:', error)
       }
     }
-  }, [])
+  }, [apiBaseUrl])
 
+  const fetchDealers = useCallback(async () => {
+    try {
+      const response = await axios.get(`${apiBaseUrl}5003/api/dealers/all`)
+      setDealers(response.data)
+    } catch (error) {
+      console.error('Ошибка при получении данных о дилерах:', error)
+    }
+  }, [apiBaseUrl])
+
+  const fetchCompanies = useCallback(async () => {
+    try {
+      const response = await axios.get(`${apiBaseUrl}5003/api/companies`)
+      setCompanies(response.data)
+    } catch (error) {
+      console.error('Ошибка при получении данных о компаниях:', error)
+    }
+  }, [apiBaseUrl])
+
+  // Инициализация данных только один раз при монтировании
   useEffect(() => {
-    const socket = io(`${API_BASE_URL}5004`)
-
-    // Инициализация данных
     const initData = async () => {
       try {
-        await Promise.all([
-          fetchUserSettings(),
-          fetchDealers(),
-          fetchCompanies(),
-          fetchMissedCalls(1),
-        ])
+        await Promise.all([fetchUserInfo(), fetchUserSettings(), fetchDealers(), fetchCompanies()])
       } catch (error) {
         console.error('Ошибка инициализации данных:', error)
       }
     }
 
     initData()
+  }, []) // Пустой массив зависимостей - выполняется только один раз
+
+  // Загружаем звонки когда получена информация о пользователе
+  useEffect(() => {
+    if (userInfo) {
+      fetchMissedCalls(1)
+    }
+  }, [userInfo, fetchMissedCalls])
+
+  // Загружаем звонки при изменении фильтров
+  useEffect(() => {
+    if (userInfo) {
+      fetchMissedCalls(pagination.page)
+    }
+  }, [
+    selectedEmployee,
+    showEmployee,
+    fetchMissedCalls,
+    pagination.page,
+    selectedUnassignedEmployee,
+  ])
+
+  // Синхронизация фильтров с store для обновления счетчика в меню
+  useEffect(() => {
+    if (userInfo) {
+      setMissedCallFilters({
+        selectedEmployee,
+        selectedUnassignedEmployee,
+        userInfo,
+      })
+    }
+  }, [selectedEmployee, selectedUnassignedEmployee, userInfo, setMissedCallFilters])
+
+  // Socket подключение
+  useEffect(() => {
+    const socket = io(`${apiBaseUrl}5004`)
 
     socket.on('new_call', () => {
-      fetchMissedCalls(pagination.page)
+      if (userInfo) {
+        fetchMissedCalls(pagination.page)
+      }
     })
 
     return () => {
       socket.disconnect()
     }
-  }, [fetchUserSettings, fetchDealers, fetchCompanies, fetchMissedCalls])
+  }, [apiBaseUrl, userInfo, pagination.page, fetchMissedCalls])
 
   // Обработчик изменения страницы
   const handlePageChange = useCallback((event, newPage) => {
     setPagination((prev) => ({ ...prev, page: newPage }))
   }, [])
 
-  // Эффект для загрузки данных при изменении страницы
-  useEffect(() => {
-    fetchMissedCalls(pagination.page)
-  }, [pagination.page, fetchMissedCalls])
-  // Обработчики остаются без изменений
   const handleOpen = (notification) => {
     setPhoneNumber(notification.callerNumber)
     setOpen(true)
@@ -227,7 +283,7 @@ const MissedCalls = () => {
     if (!selectedDealer) return alert('Выберите дилера')
 
     try {
-      const response = await axios.post(`${API_BASE_URL}5004/api/add-phone`, {
+      const response = await axios.post(`${apiBaseUrl}5004/api/add-phone`, {
         dealerId: selectedDealer,
         phoneNumber,
         phoneType,
@@ -235,14 +291,26 @@ const MissedCalls = () => {
       })
 
       if (response.status === 201) {
-        alert('Номер телефона добавлен')
+        Toastify({
+          text: 'Номер телефона добавлен',
+          close: true,
+          backgroundColor: 'linear-gradient(to right, #007BFF, #0056b3)',
+        }).showToast()
         handleClose()
       } else {
-        alert('Ошибка при добавлении номера')
+        Toastify({
+          text: 'Ошибка при добавлении номера!',
+          close: true,
+          backgroundColor: 'linear-gradient(to right, #ff0000, #ffcccc)',
+        }).showToast()
       }
     } catch (error) {
       console.error('Ошибка:', error)
-      alert('Ошибка при добавлении номера')
+      Toastify({
+        text: 'Ошибка при добавлении номера!',
+        close: true,
+        backgroundColor: 'linear-gradient(to right, #ff0000, #ffcccc)',
+      }).showToast()
     }
   }
 
@@ -263,54 +331,125 @@ const MissedCalls = () => {
 
   return (
     <div className="container">
-      {/* Блок с кнопками фильтрации по сотрудникам */}
-
-      {/* Блок с кнопками фильтрации по получателям */}
-      <div
-        className="filter-buttons"
-        style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}
-      >
-        <h4>Фильтр по получателю:</h4>
-        <button
-          onClick={() => setSelectedReceiver('undefined')}
-          style={{
-            padding: '8px 16px',
-            backgroundColor: selectedReceiver === 'undefined' ? '#1976d2' : '#f0f0f0',
-            color: selectedReceiver === 'undefined' ? 'white' : 'black',
-            border: '1px solid #ddd',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
+      {/* Блок с кнопками фильтрации по сотрудникам (только для пользователей с правами на просмотр всех звонков) */}
+      {userInfo?.canViewAllCalls && (
+        <div
+          className="filter-buttons"
+          style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}
         >
-          Все
-        </button>
-
-        {availableReceivers.map((receiver, index) => (
+          <h4>Фильтр по сотруднику:</h4>
           <button
-            key={index}
             onClick={() => {
-              setSelectedReceiver(receiver.number)
               setSelectedEmployee(null)
+              setSelectedUnassignedEmployee(false)
             }}
             style={{
               padding: '8px 16px',
-              backgroundColor: selectedReceiver === receiver.number ? '#1976d2' : '#f0f0f0',
-              color: selectedReceiver === receiver.number ? 'white' : 'black',
+              backgroundColor:
+                selectedEmployee === null && !selectedUnassignedEmployee ? '#1976d2' : '#f0f0f0',
+              color: selectedEmployee === null && !selectedUnassignedEmployee ? 'white' : 'black',
               border: '1px solid #ddd',
               borderRadius: '4px',
               cursor: 'pointer',
             }}
           >
-            {receiver.fullName}
+            {userInfo.isAdmin ? 'Все сотрудники' : 'Сотрудники отдела'}
           </button>
-        ))}
-      </div>
+
+          <button
+            onClick={() => {
+              setSelectedUnassignedEmployee(!selectedUnassignedEmployee)
+              setSelectedEmployee(null)
+            }}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: selectedUnassignedEmployee ? '#1976d2' : '#f0f0f0',
+              color: selectedUnassignedEmployee ? 'white' : 'black',
+              border: '1px solid #ddd',
+              borderRadius: '4px',
+              cursor: 'pointer',
+            }}
+          >
+            Неопределенный сотрудник
+          </button>
+
+          {/* Кнопки для конкретных сотрудников отдела (для НОК и руководителей) */}
+          {(userInfo.isDepartmentHead || userInfo.isNOK) &&
+            departmentEmployees.map((employee) => (
+              <button
+                key={employee.id}
+                onClick={() => {
+                  setSelectedEmployee(employee.id)
+                  setSelectedUnassignedEmployee(false)
+                }}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: selectedEmployee === employee.id ? '#1976d2' : '#f0f0f0',
+                  color: selectedEmployee === employee.id ? 'white' : 'black',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                }}
+              >
+                {`${employee.last_name} ${employee.first_name}`}
+              </button>
+            ))}
+
+          {/* Кнопки для всех сотрудников (только для администраторов) */}
+          {userInfo.isAdmin &&
+            allCallEmployees.map((employee) => (
+              <button
+                key={employee.id}
+                onClick={() => {
+                  setSelectedEmployee(employee.id)
+                  setSelectedUnassignedEmployee(false)
+                }}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: selectedEmployee === employee.id ? '#1976d2' : '#f0f0f0',
+                  color: selectedEmployee === employee.id ? 'white' : 'black',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                }}
+                title={`${employee.position_name || 'Должность не указана'} - ${
+                  employee.department_name || 'Отдел не указан'
+                }`}
+              >
+                {`${employee.last_name} ${employee.first_name}`}
+              </button>
+            ))}
+        </div>
+      )}
+
+      {/* Информация о текущих правах пользователя */}
+      {userInfo && (
+        <div
+          style={{
+            marginBottom: '20px',
+            padding: '10px',
+            backgroundColor: '#f5f5f5',
+            borderRadius: '4px',
+            fontSize: '14px',
+          }}
+        >
+          <strong>Текущие права:</strong>
+          {userInfo.isNOK && ' НОК (видит все звонки)'}
+          {userInfo.isAdmin && ' Администратор (видит все звонки)'}
+          {userInfo.isDepartmentHead &&
+            ` Руководитель отдела "${userInfo.department_name}" (видит звонки отдела)`}
+          {!userInfo.canViewAllCalls && ' Обычный пользователь (видит только свои звонки)'}
+        </div>
+      )}
+
       <NotificationList
         title="Пропущенные звонки"
         notifications={missedCalls}
         statusTitle="Пропущенный"
         onAddPhoneClick={handleOpen}
       />
+
       <Pagination
         count={Math.ceil(pagination.total / pagination.limit)}
         page={pagination.page}
