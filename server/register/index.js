@@ -87,6 +87,8 @@ const {
   getTaskHierarchy,
   hasSubtasks,
   checkOverdueTasks,
+  addChatFile,
+  getChatFilesByTaskId,
 } = require('./tasksController/tasksController')
 
 // Подключение userController
@@ -395,6 +397,8 @@ app.post('/api/tasks/:taskId/comments', addTaskComment(dbPool))
 app.get('/api/tasks/:taskId/messages-chat-task', getTaskMessages(dbPool))
 app.post('/api/tasks/:taskId/messages-chat-task', sendTaskMessage(dbPool, io))
 app.post('/api/tasks/:taskId/mark-messages-as-read', markMessagesAsRead(dbPool))
+app.post('/api/chat-files/add', addChatFile(dbPool))
+app.get('/api/chat-files/:taskId', getChatFilesByTaskId(dbPool))
 app.get('/api/tasks/hierarchy/:taskId', getTaskHierarchy(dbPool))
 app.get('/api/tasks/:taskId/has-subtasks', hasSubtasks(dbPool))
 

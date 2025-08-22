@@ -2970,6 +2970,69 @@ async function sendOverdueNotification(task, dbPool, io) {
   }
 }
 
+// Функция для добавления файла в таблицу chat_files
+function addChatFile(dbPool) {
+  return async function (req, res) {
+    const {
+      message_id,
+      task_id,
+      original_name,
+      server_filename,
+      file_path,
+      file_size,
+      file_type,
+      is_image,
+      sender_id,
+      sender_name,
+    } = req.body
+
+    try {
+      const result = await dbPool.query(
+        `INSERT INTO chat_files (
+          message_id, task_id, original_name, server_filename, 
+          file_path, file_size, file_type, is_image, sender_id, sender_name
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+        [
+          message_id,
+          task_id,
+          original_name,
+          server_filename,
+          file_path,
+          file_size,
+          file_type,
+          is_image,
+          sender_id,
+          sender_name,
+        ]
+      )
+
+      res.status(201).json(result.rows[0])
+    } catch (error) {
+      console.error('Ошибка при добавлении файла в chat_files:', error)
+      res.status(500).json({ error: 'Ошибка сервера при добавлении файла' })
+    }
+  }
+}
+
+// Функция для получения файлов по ID задачи
+function getChatFilesByTaskId(dbPool) {
+  return async function (req, res) {
+    const { taskId } = req.params
+
+    try {
+      const result = await dbPool.query(
+        `SELECT * FROM chat_files WHERE task_id = $1 ORDER BY created_at DESC`,
+        [taskId]
+      )
+
+      res.json({ files: result.rows })
+    } catch (error) {
+      console.error('Ошибка при получении файлов:', error)
+      res.status(500).json({ error: 'Ошибка сервера при получении файлов' })
+    }
+  }
+}
+
 module.exports = {
   createTask,
   addTaskAssignment,
@@ -3020,4 +3083,6 @@ module.exports = {
   checkOverdueTasks,
   updateTaskDeadline,
   checkNotification,
+  addChatFile,
+  getChatFilesByTaskId,
 }

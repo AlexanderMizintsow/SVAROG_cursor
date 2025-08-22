@@ -1071,3 +1071,60 @@ ALTER TABLE reminders ADD CONSTRAINT reminders_user_id_fkey
 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE; -- Создание нового ограничения с каскадным удалением
 /*ВРЕМЕННВЕ ИСПРАВЛЕНИЯ**********************************************************************************************/
 
+
+
+-- Таблица для хранения метаданных файлов в чате задач
+CREATE TABLE IF NOT EXISTS chat_files (
+    id SERIAL PRIMARY KEY,
+    message_id INTEGER REFERENCES messages_task(id) ON DELETE CASCADE,
+    task_id INTEGER NOT NULL,
+    original_name VARCHAR(255) NOT NULL,
+    server_filename VARCHAR(255) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    file_size BIGINT NOT NULL,
+    file_type VARCHAR(100) NOT NULL,
+    is_image BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    sender_id INTEGER NOT NULL,
+    sender_name VARCHAR(255) NOT NULL
+);
+
+-- Индексы для оптимизации запросов
+CREATE INDEX IF NOT EXISTS idx_chat_files_task_id ON chat_files(task_id);
+CREATE INDEX IF NOT EXISTS idx_chat_files_message_id ON chat_files(message_id);
+CREATE INDEX IF NOT EXISTS idx_chat_files_sender_id ON chat_files(sender_id);
+CREATE INDEX IF NOT EXISTS idx_chat_files_created_at ON chat_files(created_at);
+
+-- Комментарии к таблице
+COMMENT ON TABLE chat_files IS 'Метаданные файлов, отправленных в чате задач';
+COMMENT ON COLUMN chat_files.message_id IS 'ID сообщения, к которому прикреплен файл';
+COMMENT ON COLUMN chat_files.task_id IS 'ID задачи';
+COMMENT ON COLUMN chat_files.original_name IS 'Оригинальное имя файла';
+COMMENT ON COLUMN chat_files.server_filename IS 'Имя файла на сервере';
+COMMENT ON COLUMN chat_files.file_path IS 'Путь к файлу на сервере';
+COMMENT ON COLUMN chat_files.file_size IS 'Размер файла в байтах';
+COMMENT ON COLUMN chat_files.file_type IS 'MIME-тип файла';
+COMMENT ON COLUMN chat_files.is_image IS 'Флаг, является ли файл изображением';
+COMMENT ON COLUMN chat_files.sender_id IS 'ID отправителя файла';
+COMMENT ON COLUMN chat_files.sender_name IS 'Имя отправителя файла';
+-- Таблица для хранения метаданных файлов в чате задач
+CREATE TABLE IF NOT EXISTS chat_files (
+    id SERIAL PRIMARY KEY,
+    message_id INTEGER REFERENCES messages_task(id) ON DELETE CASCADE,
+    task_id INTEGER NOT NULL,
+    original_name VARCHAR(255) NOT NULL,
+    server_filename VARCHAR(255) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    file_size BIGINT NOT NULL,
+    file_type VARCHAR(100) NOT NULL,
+    is_image BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    sender_id INTEGER NOT NULL,
+    sender_name VARCHAR(255) NOT NULL
+);
+
+-- Индексы для оптимизации запросов
+CREATE INDEX IF NOT EXISTS idx_chat_files_task_id ON chat_files(task_id);
+CREATE INDEX IF NOT EXISTS idx_chat_files_message_id ON chat_files(message_id);
+CREATE INDEX IF NOT EXISTS idx_chat_files_sender_id ON chat_files(sender_id);
+CREATE INDEX IF NOT EXISTS idx_chat_files_created_at ON chat_files(created_at);
