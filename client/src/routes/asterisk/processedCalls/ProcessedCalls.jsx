@@ -369,6 +369,7 @@ const ProcessedCalls = () => {
         notifications={processedCalls}
         statusTitle="Обработанный"
         onAddPhoneClick={handleOpen}
+        userInfo={userInfo}
       />
 
       <Pagination

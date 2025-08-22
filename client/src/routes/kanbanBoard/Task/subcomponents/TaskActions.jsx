@@ -62,6 +62,14 @@ const TaskActions = ({
           '& .MuiFab-root': {
             width: 40,
             height: 40,
+            minHeight: 'unset',
+            borderRadius: '50%',
+          },
+          '& .MuiSpeedDialIcon-icon': {
+            fontSize: '24px',
+          },
+          '& .MuiSpeedDialIcon-openIcon': {
+            fontSize: '24px',
           },
         }}
       >

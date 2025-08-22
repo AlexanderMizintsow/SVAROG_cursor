@@ -1,6 +1,10 @@
 node_modules
 uploads/
 
+# Дополнительная защита для файлов uploads
+uploads/*
+!uploads/.gitkeep
+
 # Config
  
 # Logs

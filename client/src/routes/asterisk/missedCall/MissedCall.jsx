@@ -448,6 +448,7 @@ const MissedCalls = () => {
         notifications={missedCalls}
         statusTitle="Пропущенный"
         onAddPhoneClick={handleOpen}
+        userInfo={userInfo}
       />
 
       <Pagination

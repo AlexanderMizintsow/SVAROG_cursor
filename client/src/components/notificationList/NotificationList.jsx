@@ -13,7 +13,7 @@ import ScheduleCallModal from '../scheduleCallModal/ScheduleCallModal'
 import { API_BASE_URL } from '../../../config'
 import useUserStore from '../../store/userStore'
 
-const NotificationList = ({ title, notifications, statusTitle, onAddPhoneClick }) => {
+const NotificationList = ({ title, notifications, statusTitle, onAddPhoneClick, userInfo }) => {
   const { user } = useUserStore()
   const [searchTerm, setSearchTerm] = useState('')
   const [comments, setComments] = useState({})
@@ -317,16 +317,19 @@ const NotificationList = ({ title, notifications, statusTitle, onAddPhoneClick }
 
       <h5>{title}</h5>
       {/* Кнопка появляется только если есть пропущенные звонки и в разделе пропущенных */}
-      {hasMissedCalls && statusTitle === 'Пропущенный' && position === 'НОК' && (
-        <button
-          onClick={handleBatchProcessCalls}
-          className="batch-process-button"
-          title="Отправить все пропущенные звонки в обработанные"
-        >
-          <MdOutlineRecycling className="batch-process-icon" />
-          Обработать все
-        </button>
-      )}
+      {hasMissedCalls &&
+        statusTitle === 'Пропущенный' &&
+        (position === 'НОК' ||
+          (userInfo && userInfo.isDepartmentHead && userInfo.canViewAllCalls)) && (
+          <button
+            onClick={handleBatchProcessCalls}
+            className="batch-process-button"
+            title="Отправить все пропущенные звонки в обработанные"
+          >
+            <MdOutlineRecycling className="batch-process-icon" />
+            Обработать все
+          </button>
+        )}
       {notifications.length === 0 ? (
         <p className="empty-message">Нет новых уведомлений</p>
       ) : (

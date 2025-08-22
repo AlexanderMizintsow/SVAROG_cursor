@@ -435,6 +435,7 @@ const AcceptedCalls = () => {
         notifications={acceptedCalls}
         statusTitle="Принятый"
         onAddPhoneClick={handleOpen}
+        userInfo={userInfo}
       />
 
       <Pagination

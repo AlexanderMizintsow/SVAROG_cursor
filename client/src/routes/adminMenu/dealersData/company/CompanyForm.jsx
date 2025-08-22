@@ -196,10 +196,7 @@ const CompanyForm = ({ onSubmit }) => {
     console.log('Данные для отправки:', company)
 
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}5003/api/companies`,
-        company
-      )
+      const response = await axios.post(`${API_BASE_URL}5003/api/companies`, company)
       Toastify({
         text: `Компания "${company.name_companies}" успешно создана.`,
         close: true,
@@ -208,8 +205,7 @@ const CompanyForm = ({ onSubmit }) => {
         },
       }).showToast()
     } catch (error) {
-      let errorMessage =
-        'Ошибка при создании компании, проверьте заполнение полей.'
+      let errorMessage = 'Ошибка при создании компании, проверьте заполнение полей.'
       if (error.response) {
         if (error.response.data && error.response.data.error) {
           errorMessage = `${error.response.data.error}: ${error.response.data.details}`
@@ -276,9 +272,7 @@ const CompanyForm = ({ onSubmit }) => {
         />
 
         <FormControl fullWidth margin="normal" required>
-          <InputLabel id="regional-manager-select-label">
-            Региональный менеджер
-          </InputLabel>
+          <InputLabel id="regional-manager-select-label">Региональный менеджер</InputLabel>
           <Select
             labelId="regional-manager-select-label"
             name="regional_manager_id"
@@ -347,12 +341,7 @@ const CompanyForm = ({ onSubmit }) => {
                 labelId={`replacing-mpr-select-label-${index}`}
                 value={mpr.user_id}
                 onChange={(e) =>
-                  handleNestedArrayChange(
-                    'replacing_mpr',
-                    index,
-                    'user_id',
-                    e.target.value
-                  )
+                  handleNestedArrayChange('replacing_mpr', index, 'user_id', e.target.value)
                 }
               >
                 <MenuItem value="">
@@ -373,9 +362,7 @@ const CompanyForm = ({ onSubmit }) => {
               <FaDeleteLeft />
             </Button>
             <Button
-              onClick={() =>
-                handleAddNestedField('replacing_mpr', { user_id: '' })
-              }
+              onClick={() => handleAddNestedField('replacing_mpr', { user_id: '' })}
               color="primary"
             >
               <MdAddCircle />
@@ -394,12 +381,7 @@ const CompanyForm = ({ onSubmit }) => {
                 labelId={`replacing-mpp-select-label-${index}`}
                 value={mpp.user_id}
                 onChange={(e) =>
-                  handleNestedArrayChange(
-                    'replacing_mpp',
-                    index,
-                    'user_id',
-                    e.target.value
-                  )
+                  handleNestedArrayChange('replacing_mpp', index, 'user_id', e.target.value)
                 }
               >
                 <MenuItem value="">
@@ -414,19 +396,12 @@ const CompanyForm = ({ onSubmit }) => {
             </FormControl>
             {/* Поле для выбора уровня приоритета */}
             <FormControl fullWidth margin="normal" required>
-              <InputLabel id={`priority-select-label-${index}`}>
-                Приоритет №{index + 1}
-              </InputLabel>
+              <InputLabel id={`priority-select-label-${index}`}>Приоритет №{index + 1}</InputLabel>
               <Select
                 labelId={`priority-select-label-${index}`}
                 value={mpp.priority_level}
                 onChange={(e) =>
-                  handleNestedArrayChange(
-                    'replacing_mpp',
-                    index,
-                    'priority_level',
-                    e.target.value
-                  )
+                  handleNestedArrayChange('replacing_mpp', index, 'priority_level', e.target.value)
                 }
               >
                 <MenuItem value={1}>Высокий</MenuItem>
@@ -460,9 +435,7 @@ const CompanyForm = ({ onSubmit }) => {
           control={
             <Checkbox
               checked={company.has_availability}
-              onChange={(e) =>
-                setCompany({ ...company, has_availability: e.target.checked })
-              }
+              onChange={(e) => setCompany({ ...company, has_availability: e.target.checked })}
               name="has_availability"
               color="primary"
             />
@@ -474,9 +447,7 @@ const CompanyForm = ({ onSubmit }) => {
           control={
             <Checkbox
               checked={company.has_warehouse}
-              onChange={(e) =>
-                setCompany({ ...company, has_warehouse: e.target.checked })
-              }
+              onChange={(e) => setCompany({ ...company, has_warehouse: e.target.checked })}
               name="has_warehouse"
               color="primary"
             />
@@ -485,9 +456,7 @@ const CompanyForm = ({ onSubmit }) => {
         />
 
         <FormControl fullWidth margin="normal" required>
-          <InputLabel id="document-transfer-label">
-            Отдел передачи документов
-          </InputLabel>
+          <InputLabel id="document-transfer-label">Отдел передачи документов</InputLabel>
           <Select
             labelId="document-transfer-label"
             name="document_transfer_department"
@@ -507,9 +476,7 @@ const CompanyForm = ({ onSubmit }) => {
           control={
             <Checkbox
               checked={company.is_self_service}
-              onChange={(e) =>
-                setCompany({ ...company, is_self_service: e.target.checked })
-              }
+              onChange={(e) => setCompany({ ...company, is_self_service: e.target.checked })}
               name="is_self_service"
               color="primary"
             />
@@ -520,15 +487,11 @@ const CompanyForm = ({ onSubmit }) => {
         {company.industries.map((industry, index) => (
           <div key={index} className="company-form-input-field">
             <FormControl fullWidth margin="normal" required>
-              <InputLabel id={`industry-select-label-${index}`}>
-                Отрасль №{index + 1}
-              </InputLabel>
+              <InputLabel id={`industry-select-label-${index}`}>Отрасль №{index + 1}</InputLabel>
               <Select
                 labelId={`industry-select-label-${index}`}
                 value={industry}
-                onChange={(e) =>
-                  handleArrayChange('industries', index, e.target.value)
-                }
+                onChange={(e) => handleArrayChange('industries', index, e.target.value)}
                 label={`Отрасль №${index + 1}`}
               >
                 {industriesList.map((option) => (
@@ -545,10 +508,7 @@ const CompanyForm = ({ onSubmit }) => {
             >
               <FaDeleteLeft />
             </Button>
-            <Button
-              onClick={() => handleAddNestedField('industries', '')}
-              color="primary"
-            >
+            <Button onClick={() => handleAddNestedField('industries', '')} color="primary">
               <MdAddCircle />
             </Button>
           </div>
@@ -571,11 +531,7 @@ const CompanyForm = ({ onSubmit }) => {
 
                 if (value.length > 9) {
                   if (value[0] === '8') {
-                    handleArrayChange(
-                      'phoneNumbers',
-                      index,
-                      '+7' + value.slice(1)
-                    )
+                    handleArrayChange('phoneNumbers', index, '+7' + value.slice(1))
                   } else if (!value.startsWith('+7')) {
                     handleArrayChange('phoneNumbers', index, '+7' + value)
                   } else {
@@ -597,10 +553,7 @@ const CompanyForm = ({ onSubmit }) => {
             >
               <FaDeleteLeft />
             </Button>{' '}
-            <Button
-              onClick={() => handleAddField('phoneNumbers')}
-              color="primary"
-            >
+            <Button onClick={() => handleAddField('phoneNumbers')} color="primary">
               <MdAddCircle />
             </Button>
           </div>
@@ -611,9 +564,7 @@ const CompanyForm = ({ onSubmit }) => {
             <TextField
               label={`Email №${index + 1}`}
               value={email}
-              onChange={(e) =>
-                handleArrayChange('emails', index, e.target.value)
-              }
+              onChange={(e) => handleArrayChange('emails', index, e.target.value)}
               fullWidth
               margin="normal"
               required
@@ -656,9 +607,7 @@ const CompanyForm = ({ onSubmit }) => {
               <Select
                 labelId={`related-activity-select-label-${index}`}
                 value={activity}
-                onChange={(e) =>
-                  handleArrayChange('relatedActivities', index, e.target.value)
-                }
+                onChange={(e) => handleArrayChange('relatedActivities', index, e.target.value)}
                 displayEmpty
               >
                 {relatedActivities.map((relatedActivity, idx) => (
@@ -675,10 +624,7 @@ const CompanyForm = ({ onSubmit }) => {
             >
               <FaDeleteLeft />
             </Button>
-            <Button
-              onClick={() => handleAddField('relatedActivities')}
-              color="primary"
-            >
+            <Button onClick={() => handleAddField('relatedActivities')} color="primary">
               <MdAddCircle />
             </Button>
           </div>
@@ -687,15 +633,11 @@ const CompanyForm = ({ onSubmit }) => {
         {company.contracts.map((contract, index) => (
           <div key={index} className="company-form-input-field">
             <FormControl fullWidth margin="normal" required>
-              <InputLabel id={`contract-select-label-${index}`}>
-                Договор №{index + 1}
-              </InputLabel>
+              <InputLabel id={`contract-select-label-${index}`}>Договор №{index + 1}</InputLabel>
               <Select
                 labelId={`contract-select-label-${index}`}
                 value={contract}
-                onChange={(e) =>
-                  handleArrayChange('contracts', index, e.target.value)
-                }
+                onChange={(e) => handleArrayChange('contracts', index, e.target.value)}
               >
                 <MenuItem value="">
                   <em>Выберите договор</em>
@@ -722,12 +664,7 @@ const CompanyForm = ({ onSubmit }) => {
 
         {company.socialNetworks.map((network, index) => (
           <div key={index} className="company-form-input-field">
-            <FormControl
-              fullWidth
-              margin="normal"
-              style={{ marginRight: '15px' }}
-              required
-            >
+            <FormControl fullWidth margin="normal" style={{ marginRight: '15px' }} required>
               <InputLabel id={`social-network-select-label-${index}`}>
                 Соц. сеть №{index + 1}
               </InputLabel>
@@ -735,12 +672,7 @@ const CompanyForm = ({ onSubmit }) => {
                 labelId={`social-network-select-label-${index}`}
                 value={network.network_name || ''} // Убедитесь, что значение по умолчанию - пустая строка
                 onChange={(e) =>
-                  handleNestedArrayChange(
-                    'socialNetworks',
-                    index,
-                    'network_name',
-                    e.target.value
-                  )
+                  handleNestedArrayChange('socialNetworks', index, 'network_name', e.target.value)
                 }
                 displayEmpty
               >
@@ -755,12 +687,7 @@ const CompanyForm = ({ onSubmit }) => {
               label="Комментарий к соц. сети"
               value={network.comment}
               onChange={(e) =>
-                handleNestedArrayChange(
-                  'socialNetworks',
-                  index,
-                  'comment',
-                  e.target.value
-                )
+                handleNestedArrayChange('socialNetworks', index, 'comment', e.target.value)
               }
               fullWidth
               margin="normal"
@@ -793,12 +720,7 @@ const CompanyForm = ({ onSubmit }) => {
               label="Условия доставки"
               value={term.term_name}
               onChange={(e) =>
-                handleNestedArrayChange(
-                  'deliveryTerms',
-                  index,
-                  'term_name',
-                  e.target.value
-                )
+                handleNestedArrayChange('deliveryTerms', index, 'term_name', e.target.value)
               }
               fullWidth
               margin="normal"
@@ -808,12 +730,7 @@ const CompanyForm = ({ onSubmit }) => {
               label="Комментарий к условию доставки"
               value={term.term_comment}
               onChange={(e) =>
-                handleNestedArrayChange(
-                  'deliveryTerms',
-                  index,
-                  'term_comment',
-                  e.target.value
-                )
+                handleNestedArrayChange('deliveryTerms', index, 'term_comment', e.target.value)
               }
               fullWidth
               margin="normal"
@@ -848,13 +765,7 @@ const CompanyForm = ({ onSubmit }) => {
               <Select
                 labelId={`notification-method-select-label-${index}`}
                 value={method || ''}
-                onChange={(e) =>
-                  handleArrayChange(
-                    'notificationMethods',
-                    index,
-                    e.target.value
-                  )
-                }
+                onChange={(e) => handleArrayChange('notificationMethods', index, e.target.value)}
                 displayEmpty
               >
                 {notificationMethodsOptions.map((option, idx) => (
@@ -871,10 +782,7 @@ const CompanyForm = ({ onSubmit }) => {
             >
               <FaDeleteLeft />
             </Button>
-            <Button
-              onClick={() => handleAddField('notificationMethods')}
-              color="primary"
-            >
+            <Button onClick={() => handleAddField('notificationMethods')} color="primary">
               <MdAddCircle />
             </Button>
           </div>
@@ -882,8 +790,7 @@ const CompanyForm = ({ onSubmit }) => {
 
         {company.importantDates.map((date, index) => {
           const isBothRequired =
-            !!(date.date_name || date.event_date) &&
-            !(date.date_name && date.event_date)
+            !!(date.date_name || date.event_date) && !(date.date_name && date.event_date)
           return (
             <div key={index} className="company-form-input-field">
               <TextField
@@ -891,12 +798,7 @@ const CompanyForm = ({ onSubmit }) => {
                 label="Наименование значимой даты"
                 value={date.date_name}
                 onChange={(e) =>
-                  handleNestedArrayChange(
-                    'importantDates',
-                    index,
-                    'date_name',
-                    e.target.value
-                  )
+                  handleNestedArrayChange('importantDates', index, 'date_name', e.target.value)
                 }
                 fullWidth
                 margin="normal"
@@ -908,12 +810,7 @@ const CompanyForm = ({ onSubmit }) => {
                 type="date"
                 value={date.event_date}
                 onChange={(e) =>
-                  handleNestedArrayChange(
-                    'importantDates',
-                    index,
-                    'event_date',
-                    e.target.value
-                  )
+                  handleNestedArrayChange('importantDates', index, 'event_date', e.target.value)
                 }
                 fullWidth
                 margin="normal"
@@ -961,9 +858,7 @@ const CompanyForm = ({ onSubmit }) => {
                 color="primary"
               />
             }
-            label={`Подъем на этаж (${
-              company.floorRising.is_paid ? 'Да' : 'Нет'
-            })`}
+            label={`Подъем на этаж (${company.floorRising.is_paid ? 'Да' : 'Нет'})`}
           />
           <TextField
             label="Комментарий по подъему на этаж"
@@ -990,13 +885,7 @@ const CompanyForm = ({ onSubmit }) => {
             address.building
           )
           const isAllRequired =
-            isAnyFilled &&
-            !(
-              address.region &&
-              address.city &&
-              address.street &&
-              address.building
-            )
+            isAnyFilled && !(address.region && address.city && address.street && address.building)
 
           return (
             <div key={index} className="company-form-input-field">
@@ -1005,12 +894,7 @@ const CompanyForm = ({ onSubmit }) => {
                 label={`Регион ${index + 1}`}
                 value={address.region}
                 onChange={(e) =>
-                  handleNestedArrayChange(
-                    'addresses',
-                    index,
-                    'region',
-                    e.target.value
-                  )
+                  handleNestedArrayChange('addresses', index, 'region', e.target.value)
                 }
                 fullWidth
                 margin="normal"
@@ -1022,12 +906,7 @@ const CompanyForm = ({ onSubmit }) => {
                 label="Город"
                 value={address.city}
                 onChange={(e) =>
-                  handleNestedArrayChange(
-                    'addresses',
-                    index,
-                    'city',
-                    e.target.value
-                  )
+                  handleNestedArrayChange('addresses', index, 'city', e.target.value)
                 }
                 fullWidth
                 margin="normal"
@@ -1039,12 +918,7 @@ const CompanyForm = ({ onSubmit }) => {
                 label="Улица"
                 value={address.street}
                 onChange={(e) =>
-                  handleNestedArrayChange(
-                    'addresses',
-                    index,
-                    'street',
-                    e.target.value
-                  )
+                  handleNestedArrayChange('addresses', index, 'street', e.target.value)
                 }
                 fullWidth
                 margin="normal"
@@ -1056,12 +930,7 @@ const CompanyForm = ({ onSubmit }) => {
                 label="Строение"
                 value={address.building}
                 onChange={(e) =>
-                  handleNestedArrayChange(
-                    'addresses',
-                    index,
-                    'building',
-                    e.target.value
-                  )
+                  handleNestedArrayChange('addresses', index, 'building', e.target.value)
                 }
                 fullWidth
                 margin="normal"
@@ -1073,12 +942,7 @@ const CompanyForm = ({ onSubmit }) => {
                 label="Комментарий к адресу"
                 value={address.comment}
                 onChange={(e) =>
-                  handleNestedArrayChange(
-                    'addresses',
-                    index,
-                    'comment',
-                    e.target.value
-                  )
+                  handleNestedArrayChange('addresses', index, 'comment', e.target.value)
                 }
                 fullWidth
                 margin="normal"
@@ -1088,12 +952,7 @@ const CompanyForm = ({ onSubmit }) => {
                   <Checkbox
                     checked={address.is_primary}
                     onChange={(e) =>
-                      handleNestedArrayChange(
-                        'addresses',
-                        index,
-                        'is_primary',
-                        e.target.checked
-                      )
+                      handleNestedArrayChange('addresses', index, 'is_primary', e.target.checked)
                     }
                     name="is_primary"
                     color="primary"
@@ -1129,11 +988,7 @@ const CompanyForm = ({ onSubmit }) => {
 
         {company.competitors.map((competitor, index) => (
           <div key={index} className="company-form-input-field">
-            <FormControl
-              style={{ marginRight: '15PX' }}
-              fullWidth
-              margin="normal"
-            >
+            <FormControl style={{ marginRight: '15PX' }} fullWidth margin="normal">
               <InputLabel id={`competitor-select-label-${index}`}>
                 Конкурент №{index + 1}
               </InputLabel>
@@ -1141,12 +996,7 @@ const CompanyForm = ({ onSubmit }) => {
                 labelId={`competitor-select-label-${index}`}
                 value={competitor.competitor_id || ''}
                 onChange={(e) =>
-                  handleNestedArrayChange(
-                    'competitors',
-                    index,
-                    'competitor_id',
-                    e.target.value
-                  )
+                  handleNestedArrayChange('competitors', index, 'competitor_id', e.target.value)
                 }
                 label={`Конкурент №${index + 1}`}
               >
