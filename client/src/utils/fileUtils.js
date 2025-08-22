@@ -11,40 +11,40 @@ export function sanitizeFilename(filename) {
   try {
     // Проверяем, что имя файла не пустое
     if (!filename || typeof filename !== 'string') {
-      return 'document';
+      return 'document'
     }
 
-    console.log(`Исходное имя файла на клиенте: ${filename}`);
-    console.log(`Тип данных: ${typeof filename}`);
-    console.log(`Длина: ${filename.length}`);
+    console.log(`Исходное имя файла на клиенте: ${filename}`)
+    console.log(`Тип данных: ${typeof filename}`)
+    console.log(`Длина: ${filename.length}`)
 
     // Убираем недопустимые символы для имен файлов
     const cleanFilename = filename
       .replace(/[<>:"/\\|?*]/g, '_') // Заменяем недопустимые символы
       .replace(/\s+/g, '_') // Заменяем пробелы на подчеркивания
-      .trim();
-    
-    console.log(`После очистки на клиенте: ${cleanFilename}`);
-    
+      .trim()
+
+    console.log(`После очистки на клиенте: ${cleanFilename}`)
+
     // Если после очистки имя пустое, возвращаем дефолтное
     if (!cleanFilename) {
-      return 'document';
+      return 'document'
     }
-    
+
     // Ограничиваем длину имени файла
     if (cleanFilename.length > 100) {
-      const extension = cleanFilename.split('.').pop();
-      const nameWithoutExt = cleanFilename.substring(0, cleanFilename.lastIndexOf('.'));
-      const truncatedName = nameWithoutExt.substring(0, 90) + '.' + extension;
-      console.log(`Имя обрезано до: ${truncatedName}`);
-      return truncatedName;
+      const extension = cleanFilename.split('.').pop()
+      const nameWithoutExt = cleanFilename.substring(0, cleanFilename.lastIndexOf('.'))
+      const truncatedName = nameWithoutExt.substring(0, 90) + '.' + extension
+      console.log(`Имя обрезано до: ${truncatedName}`)
+      return truncatedName
     }
-    
-    console.log(`Финальное имя файла на клиенте: ${cleanFilename}`);
-    return cleanFilename;
+
+    console.log(`Финальное имя файла на клиенте: ${cleanFilename}`)
+    return cleanFilename
   } catch (error) {
-    console.error('Ошибка при обработке имени файла на клиенте:', error);
-    return 'document';
+    console.error('Ошибка при обработке имени файла на клиенте:', error)
+    return 'document'
   }
 }
 
@@ -56,20 +56,20 @@ export function sanitizeFilename(filename) {
 export function createSafeDisplayName(originalName) {
   try {
     if (!originalName || typeof originalName !== 'string') {
-      return 'document';
+      return 'document'
     }
 
     // Ограничиваем длину для отображения
     if (originalName.length > 30) {
-      const extension = originalName.split('.').pop();
-      const nameWithoutExt = originalName.substring(0, originalName.lastIndexOf('.'));
-      return nameWithoutExt.substring(0, 25) + '...' + extension;
+      const extension = originalName.split('.').pop()
+      const nameWithoutExt = originalName.substring(0, originalName.lastIndexOf('.'))
+      return nameWithoutExt.substring(0, 25) + '...' + extension
     }
-    
-    return originalName;
+
+    return originalName
   } catch (error) {
-    console.error('Ошибка при создании имени для отображения:', error);
-    return 'document';
+    console.error('Ошибка при создании имени для отображения:', error)
+    return 'document'
   }
 }
 
@@ -81,30 +81,29 @@ export function createSafeDisplayName(originalName) {
 export function isFilenameSafe(filename) {
   try {
     if (!filename || typeof filename !== 'string') {
-      return false;
+      return false
     }
-    
+
     // Проверяем на наличие недопустимых символов
-    const invalidChars = /[<>:"/\\|?*]/;
+    const invalidChars = /[<>:"/\\|?*]/
     if (invalidChars.test(filename)) {
-      return false;
+      return false
     }
-    
+
     // Проверяем длину
     if (filename.length > 100) {
-      return false;
+      return false
     }
-    
+
     // Проверяем, что имя не пустое после очистки
-    const cleanName = filename.trim();
+    const cleanName = filename.trim()
     if (!cleanName) {
-      return false;
+      return false
     }
-    
-    return true;
+
+    return true
   } catch (error) {
-    console.error('Ошибка при проверке безопасности имени файла:', error);
-    return false;
+    console.error('Ошибка при проверке безопасности имени файла:', error)
+    return false
   }
 }
-
