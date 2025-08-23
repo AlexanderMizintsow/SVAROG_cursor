@@ -27,6 +27,7 @@ const ChatTaskModal = ({
   const [replyingTo, setReplyingTo] = useState(null)
   const [showFileManager, setShowFileManager] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [isProcessingPaste, setIsProcessingPaste] = useState(false)
 
   const userId = user ? user.id : null
 
@@ -446,6 +447,37 @@ const ChatTaskModal = ({
     async (images) => {
       if (!images || images.length === 0) return
 
+      // Проверяем, не отправлялись ли уже эти изображения
+      const imageHashes = await Promise.all(
+        images.map(async (image) => {
+          const arrayBuffer = await image.arrayBuffer()
+          const hash = await crypto.subtle.digest('SHA-256', arrayBuffer)
+          return Array.from(new Uint8Array(hash))
+            .map((b) => b.toString(16).padStart(2, '0'))
+            .join('')
+        })
+      )
+
+      // Проверяем, нет ли уже таких изображений в последних сообщениях
+      const recentMessages = messages.slice(-5) // Проверяем последние 5 сообщений
+      const hasDuplicate = recentMessages.some((message) => {
+        if (message.files && message.files.length > 0) {
+          return message.files.some((file) => {
+            // Проверяем по имени файла (если это скриншот)
+            if (file.name && file.name.startsWith('screenshot-')) {
+              return imageHashes.some((hash) => file.name.includes(hash.substring(0, 8)))
+            }
+            return false
+          })
+        }
+        return false
+      })
+
+      if (hasDuplicate) {
+        console.warn('Предотвращена отправка дублирующегося изображения')
+        return
+      }
+
       setIsUploading(true)
       try {
         const formData = new FormData()
@@ -530,7 +562,7 @@ const ChatTaskModal = ({
         setIsUploading(false)
       }
     },
-    [task.id, task.task_id, userId, task.created_by, user?.first_name, user?.last_name]
+    [task.id, task.task_id, userId, task.created_by, user?.first_name, user?.last_name, messages]
   )
 
   const handleSendMessage = useCallback(async () => {
@@ -613,6 +645,49 @@ const ChatTaskModal = ({
     }
   }, [newMessage, task, userId, replyingTo, user?.first_name, user?.last_name, messages])
 
+  // Функция для обработки вставки изображений из буфера обмена
+  const handlePaste = useCallback(
+    async (event) => {
+      if (isProcessingPaste) {
+        return
+      }
+      setIsProcessingPaste(true)
+
+      const items = event.clipboardData?.items
+      if (!items) {
+        setIsProcessingPaste(false)
+        return
+      }
+
+      const imageFiles = []
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i]
+
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile()
+          if (file) {
+            // Создаем уникальное имя для скриншота
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+            const screenshotName = `screenshot-${timestamp}.png`
+
+            // Создаем новый File объект с правильным именем
+            const renamedFile = new File([file], screenshotName, { type: file.type })
+            imageFiles.push(renamedFile)
+          }
+        }
+      }
+
+      if (imageFiles.length > 0) {
+        event.preventDefault()
+        // Автоматически загружаем скриншоты
+        await handleSendImages(imageFiles)
+      }
+      setIsProcessingPaste(false)
+    },
+    [handleSendImages, isProcessingPaste]
+  )
+
   const onEmojiClick = (emoji) => {
     setNewMessage((prev) => prev + emoji.emoji)
     setShowEmojiPicker(false)
@@ -649,13 +724,16 @@ const ChatTaskModal = ({
         <div className="chat-header">
           <div className="header-content">
             <h3>Чат задачи по теме: &quot;{task.title}&quot;</h3>
-            <button
-              className="file-manager-btn"
-              onClick={() => setShowFileManager(true)}
-              title="Менеджер файлов"
-            >
-              <FaFolder />
-            </button>
+            <div className="header-tips">
+              <span className="paste-tip">Ctrl+V для скриншота</span>
+              <button
+                className="file-manager-btn"
+                onClick={() => setShowFileManager(true)}
+                title="Менеджер файлов"
+              >
+                <FaFolder />
+              </button>
+            </div>
           </div>
           <button className="close-button" onClick={handleClose}>
             x
@@ -786,6 +864,7 @@ const ChatTaskModal = ({
                   }
                 }
               }}
+              onPaste={handlePaste}
               placeholder="Напишите сообщение..."
               rows={2}
               style={{ resize: 'none', whiteSpace: 'pre-line' }}

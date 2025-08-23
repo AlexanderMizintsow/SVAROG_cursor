@@ -11,6 +11,7 @@ const ChatFileManager = ({ isOpen, onClose, taskId, currentUserId, messages }) =
   const [selectedFile, setSelectedFile] = useState(null)
   const [showImageModal, setShowImageModal] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState('my-files') // Новая вкладка для разделения файлов
 
   // Загрузка файлов чата
   useEffect(() => {
@@ -154,6 +155,10 @@ const ChatFileManager = ({ isOpen, onClose, taskId, currentUserId, messages }) =
 
   // Фильтрация и поиск файлов
   const filteredFiles = files.filter((file) => {
+    // Фильтр по вкладкам (мои файлы / файлы от других)
+    if (activeTab === 'my-files' && file.uploaded_by !== currentUserId) return false
+    if (activeTab === 'others-files' && file.uploaded_by === currentUserId) return false
+
     // Фильтр по типу
     if (filter === 'images' && !file.is_image) return false
     if (filter === 'documents' && file.is_image) return false
@@ -168,6 +173,10 @@ const ChatFileManager = ({ isOpen, onClose, taskId, currentUserId, messages }) =
 
     return true
   })
+
+  // Разделение файлов по отправителям для статистики
+  const myFiles = files.filter((file) => file.uploaded_by === currentUserId)
+  const othersFiles = files.filter((file) => file.uploaded_by !== currentUserId)
 
   const handleClose = () => {
     setSearchQuery('')
@@ -189,6 +198,21 @@ const ChatFileManager = ({ isOpen, onClose, taskId, currentUserId, messages }) =
           </div>
 
           <div className="file-manager-controls">
+            <div className="tabs-container">
+              <button
+                className={`tab-btn ${activeTab === 'my-files' ? 'active' : ''}`}
+                onClick={() => setActiveTab('my-files')}
+              >
+                Мои файлы ({myFiles.length})
+              </button>
+              <button
+                className={`tab-btn ${activeTab === 'others-files' ? 'active' : ''}`}
+                onClick={() => setActiveTab('others-files')}
+              >
+                Файлы от других ({othersFiles.length})
+              </button>
+            </div>
+
             <div className="search-container">
               <FaSearch className="search-icon" />
               <input
@@ -287,6 +311,8 @@ const ChatFileManager = ({ isOpen, onClose, taskId, currentUserId, messages }) =
           <div className="file-manager-footer">
             <div className="files-summary">
               <span>Всего файлов: {files.length}</span>
+              <span>Мои файлы: {myFiles.length}</span>
+              <span>Файлы от других: {othersFiles.length}</span>
               <span>Показано: {filteredFiles.length}</span>
             </div>
           </div>

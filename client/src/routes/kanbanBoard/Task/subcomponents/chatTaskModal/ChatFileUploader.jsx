@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react'
-import { FaImage, FaFile } from 'react-icons/fa'
+import { FaImage, FaFile, FaPaperclip } from 'react-icons/fa'
 import './ChatFileUploader.scss'
 
 const ChatFileUploader = ({ onSendFiles, onSendImages, isUploading }) => {
