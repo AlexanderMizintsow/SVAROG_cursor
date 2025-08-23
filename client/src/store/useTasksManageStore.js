@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import axios from 'axios'
 import { API_BASE_URL } from '../../config'
 import useTaskStateTracker from './useTaskStateTracker'
-const useTasksManageStore = create((set) => ({
+const useTasksManageStore = create((set, get) => ({
   tasksManager: [],
   completedTasks: [], // Новое состояние для завершенных задач
   unreadMessages: new Set(),
@@ -52,6 +52,16 @@ const useTasksManageStore = create((set) => ({
   addTaskManager: (newTask) =>
     set((state) => ({
       tasksManager: [...state.tasksManager, newTask],
+    })),
+
+  // Метод для обновления вложений конкретной задачи
+  updateTaskAttachments: (taskId, newAttachments) =>
+    set((state) => ({
+      tasksManager: state.tasksManager.map((task) =>
+        task.id === taskId || task.task_id === taskId
+          ? { ...task, attachments: newAttachments }
+          : task
+      ),
     })),
 
   // Метод для добавления ID задачи с непрочитанным сообщением

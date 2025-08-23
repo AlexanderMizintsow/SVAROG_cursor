@@ -35,9 +35,7 @@ const UserModal = ({ user, closeModal, exit }) => {
   useEffect(() => {
     const fetchAvatar = async () => {
       try {
-        const response = await axios.get(
-          `${API_BASE_URL}5000/api/users/${user.id}/avatar`
-        )
+        const response = await axios.get(`${API_BASE_URL}5000/api/users/${user.id}/avatar`)
         setAvatar(response.data.image)
       } catch (error) {
         console.error('Ошибка при получении аватара:', error)
@@ -132,10 +130,7 @@ const UserModal = ({ user, closeModal, exit }) => {
   }
 
   return (
-    <div
-      className={`modal-backdrop ${isVisible ? 'visible' : ''}`}
-      onClick={closeModal}
-    >
+    <div className={`modal-backdrop ${isVisible ? 'visible' : ''}`} onClick={closeModal}>
       <div
         className={`modal ${isVisible ? 'is-visible' : ''}`}
         onClick={(e) => e.stopPropagation()}
@@ -146,11 +141,7 @@ const UserModal = ({ user, closeModal, exit }) => {
         <div className="content">
           <div className="top">
             <div className="info">
-              <img
-                src={avatar}
-                alt="Аватар"
-                onClick={() => filePicker.current.click()}
-              />
+              <img src={avatar} alt="Аватар" onClick={() => filePicker.current.click()} />
               <input
                 type="file"
                 ref={filePicker}
@@ -160,8 +151,7 @@ const UserModal = ({ user, closeModal, exit }) => {
               />
               <div className="info-text">
                 <p>
-                  {user?.first_name || 'нет_имени'}{' '}
-                  {user?.last_name || 'нет_фамилии'}
+                  {user?.first_name || 'нет_имени'} {user?.last_name || 'нет_фамилии'}
                 </p>
                 <p>{user?.role_name || 'нет_роли'}</p>
               </div>

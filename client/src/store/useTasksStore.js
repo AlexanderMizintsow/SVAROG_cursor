@@ -22,6 +22,15 @@ const useTasksStore = create((set) => ({
     set((state) => ({
       tasks: [...state.tasks, newTask],
     })),
+  // Метод для обновления вложений конкретной задачи
+  updateTaskAttachments: (taskId, newAttachments) =>
+    set((state) => ({
+      tasks: state.tasks.map((task) =>
+        task.id === taskId || task.task_id === taskId
+          ? { ...task, attachments: newAttachments }
+          : task
+      ),
+    })),
 }))
 
 export default useTasksStore

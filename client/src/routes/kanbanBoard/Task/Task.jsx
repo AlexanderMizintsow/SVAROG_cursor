@@ -20,6 +20,7 @@ import Attachments from './subcomponents/Attachments'
 import CommentsTaskModal from './subcomponents/commentsTaskModal/CommentsTaskModal'
 import ChatTaskModal from './subcomponents/chatTaskModal/chatTaskModal'
 import useTasksManageStore from '../../../store/useTasksManageStore'
+import useTasksStore from '../../../store/useTasksStore'
 import TaskActions from './subcomponents/TaskActions'
 import ConfirmationDialog from '../../../components/confirmationDialog/ConfirmationDialog'
 import SubTaskHierarchy from './subcomponents/subTaskHierarchy/SubTaskHierarchy'
@@ -41,7 +42,7 @@ const Task = forwardRef(({ task, provided, actionIcon, column }, ref) => {
     assigned_user_ids, // назначенный
     approver_user_ids,
     visibility_user_ids,
-    attachments,
+    attachments: initialAttachments,
     createdAt,
     image,
     alt,
@@ -57,7 +58,9 @@ const Task = forwardRef(({ task, provided, actionIcon, column }, ref) => {
   const [isCommentsModalOpen, setCommentsModalOpen] = useState(false)
   const [isChatModalOpen, setIsChatModalOpen] = useState(false)
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false)
-  const { unreadMessages, addUnreadMessage, resetUnreadMessages } = useTasksManageStore()
+  const { unreadMessages, addUnreadMessage, resetUnreadMessages, updateTaskAttachments } =
+    useTasksManageStore()
+  const { updateTaskAttachments: updateTasksStoreAttachments } = useTasksStore()
   const [projectTitle, setProjectTitle] = useState('')
   const [projectStatus, setProjectStatus] = useState('')
   const [descriptionHistory, setDescriptionHistory] = useState([])
@@ -71,6 +74,8 @@ const Task = forwardRef(({ task, provided, actionIcon, column }, ref) => {
   const [fileCommentDialogOpen, setFileCommentDialogOpen] = useState(false)
   const [currentFileIndex, setCurrentFileIndex] = useState(0)
   const [filesToUpload, setFilesToUpload] = useState([])
+  // Локальное состояние для вложений, которое обновляется после добавления файлов
+  const [attachments, setAttachments] = useState(initialAttachments || [])
   const [dialogConfig, setDialogConfig] = useState({
     title: '',
     message: '',
@@ -82,6 +87,11 @@ const Task = forwardRef(({ task, provided, actionIcon, column }, ref) => {
   const userId = user.id
 
   const isExecutor = assigned_user_ids && assigned_user_ids.includes(userId)
+
+  // Обновляем локальное состояние attachments при изменении task.attachments
+  useEffect(() => {
+    setAttachments(initialAttachments || [])
+  }, [initialAttachments])
 
   useEffect(() => {
     if (global_task_id) {
@@ -232,7 +242,7 @@ const Task = forwardRef(({ task, provided, actionIcon, column }, ref) => {
 
       const uploadResponse = await axios.post(`${API_BASE_URL}5000/api/upload`, formData)
 
-      await axios.post(`${API_BASE_URL}5000/api/tasks/attachment/add`, {
+      const newAttachment = {
         task_id: task.id,
         file_url: uploadResponse.data.fileUrls[0],
         file_type: file.type,
@@ -240,16 +250,35 @@ const Task = forwardRef(({ task, provided, actionIcon, column }, ref) => {
         name_file: file.name,
         uploaded_by: userId,
         tableType: 'local',
-      })
+      }
+
+      await axios.post(`${API_BASE_URL}5000/api/tasks/attachment/add`, newAttachment)
+
+      // Обновляем локальное состояние attachments сразу после успешного добавления
+      const updatedAttachments = [...attachments, newAttachment]
+      setAttachments(updatedAttachments)
+
+      // Обновляем глобальное состояние в store
+      updateTaskAttachments(task.id, updatedAttachments)
+      updateTasksStoreAttachments(task.id, updatedAttachments)
 
       if (currentFileIndex < filesToUpload.length - 1) {
         setCurrentFileIndex(currentFileIndex + 1)
       } else {
         setFileCommentDialogOpen(false)
+        setFilesToUpload([])
+        setCurrentFileIndex(0)
         Toastify({ text: 'Файлы успешно добавлены!' }).showToast()
       }
     } catch (error) {
+      console.error('Ошибка при добавлении файла:', error)
       setFileCommentDialogOpen(false)
+      setFilesToUpload([])
+      setCurrentFileIndex(0)
+      Toastify({
+        text: 'Ошибка при добавлении файла!',
+        style: { background: 'linear-gradient(to right, #ff6b6b, #ff6b6b)' },
+      }).showToast()
     }
   }
 
