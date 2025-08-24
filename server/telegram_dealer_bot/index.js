@@ -8,6 +8,7 @@ const multer = require('multer')
 const axios = require('axios') // Импорт axios
 const FormData = require('form-data') // Импорт FormData
 const { initReclamationCron, initReconciliationCron } = require('./helpers/api')
+const { initOrders1CCron } = require('./queryLines/orders1c/orders1c')
 const CronManager = require('./helpers/cronManager') // Импорт нового менеджера
 const { sanitizeFilename } = require('./helpers/fileUtils') // Импорт утилиты для работы с файлами
 
@@ -47,6 +48,15 @@ const cronManager = new CronManager()
 const cronJobs = {
   reclamation: initReclamationCron(bot, cronManager),
   reconciliation: initReconciliationCron(bot, cronManager),
+}
+
+// Инициализация cron-задач для заказов 1С
+const orders1cJobs = initOrders1CCron(bot, cronManager)
+if (orders1cJobs.mainJob) {
+  cronJobs.orders1c = orders1cJobs.mainJob
+}
+if (orders1cJobs.lateResponseJob) {
+  cronJobs.orders1c_late_response = orders1cJobs.lateResponseJob
 }
 
 // Запуск мониторинга здоровья cron-задач
@@ -344,6 +354,17 @@ function gracefulShutdown() {
   if (cronJobs.reconciliation && typeof cronJobs.reconciliation.stop === 'function') {
     cronJobs.reconciliation.stop()
     console.log('Cron-задача reconciliation остановлена')
+  }
+  if (cronJobs.orders1c && typeof cronJobs.orders1c.stop === 'function') {
+    cronJobs.orders1c.stop()
+    console.log('Cron-задача orders1c остановлена')
+  }
+  if (
+    cronJobs.orders1c_late_response &&
+    typeof cronJobs.orders1c_late_response.stop === 'function'
+  ) {
+    cronJobs.orders1c_late_response.stop()
+    console.log('Cron-задача orders1c_late_response остановлена')
   }
 
   // Закрытие пула соединений

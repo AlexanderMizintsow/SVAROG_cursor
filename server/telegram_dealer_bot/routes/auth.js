@@ -51,6 +51,15 @@ const {
   handleRatingComment,
 } = require('../helpers/api')
 
+// Заказы 1С
+const {
+  handleOrderConfirm,
+  handleOrderReschedule,
+  handleDateSelection,
+  handleRescheduleReason,
+  handleCancelReschedule,
+} = require('../queryLines/orders1c/orderHandlers')
+
 //const { handleUserMessageAI } = require('../routes/AI')
 
 const router = express.Router()
@@ -112,6 +121,12 @@ async function handleUserMessage(bot, chatId, msg) {
       // Обработка комментария к оценке ************************************
       if (userSessions[chatId]?.awaitingRatingComment && msg.text !== '/cancel') {
         await handleRatingComment(bot, chatId, msg.text, userSessions)
+        return
+      }
+
+      // Обработка причины переноса заказа 1С ************************************
+      if (userSessions[chatId]?.awaitingRescheduleReason && msg.text !== '/cancel') {
+        await handleRescheduleReason(bot, chatId, msg.text, userSessions)
         return
       }
 
@@ -247,6 +262,30 @@ async function handleCallbackQuery(bot, chatId, callbackQuery) {
         return
       }
 
+      // Обработка заказов 1С ***************************************************************
+      if (command.startsWith('confirm_order_')) {
+        const orderNumber = command.replace('confirm_order_', '')
+        await handleOrderConfirm(bot, chatId, callbackQuery, orderNumber, userSessions)
+        return
+      }
+
+      if (command.startsWith('reschedule_order_')) {
+        const orderNumber = command.replace('reschedule_order_', '')
+        await handleOrderReschedule(bot, chatId, callbackQuery, orderNumber, userSessions)
+        return
+      }
+
+      if (command.startsWith('select_date_')) {
+        const selectedDate = command.replace('select_date_', '')
+        await handleDateSelection(bot, chatId, callbackQuery, selectedDate, userSessions)
+        return
+      }
+
+      if (command === 'cancel_reschedule') {
+        await handleCancelReschedule(bot, chatId, callbackQuery, userSessions)
+        return
+      }
+
       // место команд
       if (command === 'finish_calc') {
         await finalizeCalculation(chatId, userSessions, bot) // Вызываем метод завершения расчета
@@ -348,6 +387,14 @@ async function handleCallbackQuery(bot, chatId, callbackQuery) {
       if (command === '/cancel' && userSessions[chatId]?.awaitingRatingComment) {
         delete userSessions[chatId].awaitingRatingComment
         await bot.sendMessage(chatId, 'Комментарий не будет сохранен.')
+        return
+      }
+
+      if (command === '/cancel' && userSessions[chatId]?.awaitingRescheduleReason) {
+        delete userSessions[chatId].awaitingRescheduleReason
+        delete userSessions[chatId].awaitingDateSelection
+        delete userSessions[chatId].selectedNewDate
+        await bot.sendMessage(chatId, 'Перенос даты отменен.')
         return
       }
 

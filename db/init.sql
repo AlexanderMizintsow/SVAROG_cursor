@@ -1128,3 +1128,46 @@ CREATE INDEX IF NOT EXISTS idx_chat_files_task_id ON chat_files(task_id);
 CREATE INDEX IF NOT EXISTS idx_chat_files_message_id ON chat_files(message_id);
 CREATE INDEX IF NOT EXISTS idx_chat_files_sender_id ON chat_files(sender_id);
 CREATE INDEX IF NOT EXISTS idx_chat_files_created_at ON chat_files(created_at);
+
+
+-- Таблица для хранения данных о заказах 1С
+CREATE TABLE IF NOT EXISTS orders_1c (
+    id SERIAL PRIMARY KEY,
+    order_number VARCHAR(50) NOT NULL UNIQUE, -- Номер заказа
+    company_name VARCHAR(255) NOT NULL, -- Название компании
+    inn VARCHAR(12), -- ИНН компании
+    shipping_date DATE NOT NULL, -- Дата отгрузки
+    address TEXT, -- Адрес доставки
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Дата создания записи
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Дата обновления записи
+    notification_sent BOOLEAN DEFAULT FALSE, -- Статус отправки уведомления дилеру
+    notification_sent_at TIMESTAMP, -- Дата отправки уведомления
+    dealer_response_received BOOLEAN DEFAULT FALSE, -- Получен ли ответ от дилера
+    dealer_response_at TIMESTAMP, -- Дата ответа дилера
+    dealer_response_type VARCHAR(20), -- Тип ответа: 'confirm', 'reschedule', 'no_response'
+    new_shipping_date DATE, -- Новая дата отгрузки (если перенесена)
+    reschedule_reason TEXT, -- Причина переноса даты
+    mpp_notified BOOLEAN DEFAULT FALSE, -- Уведомлен ли МПП
+    mpp_notified_at TIMESTAMP -- Дата уведомления МПП
+);
+
+-- Индексы для оптимизации запросов
+CREATE INDEX IF NOT EXISTS idx_orders_1c_order_number ON orders_1c(order_number);
+CREATE INDEX IF NOT EXISTS idx_orders_1c_inn ON orders_1c(inn);
+CREATE INDEX IF NOT EXISTS idx_orders_1c_shipping_date ON orders_1c(shipping_date);
+CREATE INDEX IF NOT EXISTS idx_orders_1c_notification_sent ON orders_1c(notification_sent);
+CREATE INDEX IF NOT EXISTS idx_orders_1c_dealer_response_received ON orders_1c(dealer_response_received);
+
+-- Триггер для автоматического обновления поля updated_at
+CREATE OR REPLACE FUNCTION update_orders_1c_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_orders_1c_updated_at_trigger
+BEFORE UPDATE ON orders_1c
+FOR EACH ROW EXECUTE FUNCTION update_orders_1c_updated_at();
+
