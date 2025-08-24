@@ -23,7 +23,7 @@ import { AiOutlineFundProjectionScreen } from 'react-icons/ai'
 import { FcTreeStructure, FcParallelTasks } from 'react-icons/fc'
 import { IoAddOutline } from 'react-icons/io5'
 import { MdOutlineEditNotifications } from 'react-icons/md'
-import { FaTasks, FaHistory } from 'react-icons/fa'
+import { FaTasks } from 'react-icons/fa'
 import CompletedNotificationsHistory from './subcomponents/CompletedNotificationsHistory/CompletedNotificationsHistory'
 const ContextMenuBoard = React.lazy(() => import('../Boards/ContextMenuBoard/ContextMenuBoard'))
 const ConfirmationDialog = React.lazy(() =>
@@ -34,6 +34,7 @@ const AddModal = React.lazy(() => import('../Modals/AddModal'))
 import TaskListManager from './subcomponents/TaskListManager/TaskListManager'
 import './Boards.scss'
 import GlobalTasksContainer from '../globalTask/GlobalTasksContainer'
+import { IoMdNotificationsOff } from 'react-icons/io'
 
 const Boards = () => {
   // Получение состояний из zustand-хранилищ
@@ -247,7 +248,7 @@ const Boards = () => {
             onClick={toggleGlobalProgect}
           />
         }
-        <FaHistory
+        <IoMdNotificationsOff
           title="История завершенных уведомлений"
           className="toggle-sidebar-button"
           onClick={toggleCompletedHistory}

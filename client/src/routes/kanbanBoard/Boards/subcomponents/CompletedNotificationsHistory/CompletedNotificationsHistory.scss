@@ -5,6 +5,8 @@
   right: 0;
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -12,7 +14,9 @@
 }
 
 .completed-notifications-history-modal {
-  background: white;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-radius: 8px;
   width: 90%;
   max-width: 1200px;
@@ -21,6 +25,7 @@
   display: flex;
   flex-direction: column;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .modal-header {
@@ -30,6 +35,8 @@
   padding: 20px;
   border-bottom: 1px solid #e0e0e0;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   color: white;
 
   h2 {
@@ -238,6 +245,8 @@
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -246,7 +255,9 @@
 }
 
 .details-modal {
-  background: white;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   max-width: 900px;
@@ -256,6 +267,7 @@
   display: flex;
   flex-direction: column;
   animation: modalSlideIn 0.3s ease-out;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 @keyframes modalSlideIn {
@@ -271,6 +283,8 @@
 
 .details-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   color: white;
   padding: 24px 32px;
   display: flex;
